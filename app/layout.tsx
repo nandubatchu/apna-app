@@ -1,28 +1,33 @@
-"use client"
-// import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import { App } from 'konsta/react';
+import { cn } from "@/lib/utils";
 
-const inter = Inter({ subsets: ["latin"] });
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-sans",
+});
 
-// export const metadata: Metadata = {
-//   title: "Apna",
-//   description: "Apna",
-//   generator: "Next.js",
-//   manifest: "/manifest.webmanifest",
-//   keywords: ["apna"],
-//   themeColor: [{ media: "(prefers-color-scheme: dark)", color: "#fff" }],
-//   authors: [
-//     { name: "Yadunandan Batchu" },
-//   ],
-//   viewport:
-//     "minimum-scale=1, initial-scale=1, width=device-width, shrink-to-fit=no, viewport-fit=cover",
-//   icons: [
-//     { rel: "apple-touch-icon", url: "/icon-192x192.png" },
-//     { rel: "icon", url: "/icon-192x192.png" },
-//   ],
-// };
+export const metadata: Metadata = {
+  title: "Apna",
+  description: "Apna",
+  generator: "Next.js",
+  manifest: "/manifest.webmanifest",
+  keywords: ["apna"],
+  authors: [{ name: "Yadunandan Batchu" }],
+  icons: [
+    { rel: "apple-touch-icon", url: "/icon-192x192.png" },
+    { rel: "icon", url: "/icon-192x192.png" },
+  ],
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  themeColor: [{ media: "(prefers-color-scheme: dark)", color: "#fff" }],
+};
 
 export default function RootLayout({
   children,
@@ -30,16 +35,15 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <head>
-        <link rel="manifest" href="/manifest.webmanifest" />
-        <link rel="icon" type="image/x-icon" href="favicon.ico"></link>
-      </head>
-
-      <App theme="material">
-        <body className={inter.className}>{children}</body>
-      </App>
+    <html lang="en" suppressHydrationWarning>
+      <body
+        className={cn(
+          "min-h-screen bg-background font-sans antialiased",
+          inter.variable
+        )}
+      >
+        {children}
+      </body>
     </html>
   );
 }
-
