@@ -16,6 +16,7 @@ import {
   EnvelopeFill,
   Calendar,
   CloudUploadFill,
+  // @ts-ignore
 } from 'framework7-icons/react';
 import { MdEmail, MdToday, MdFileUpload } from 'react-icons/md';
 

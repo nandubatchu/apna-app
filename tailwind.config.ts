@@ -1,4 +1,5 @@
 import type { Config } from "tailwindcss";
+// @ts-ignore
 import konstaConfig from "konsta/config";
 
 const config: Config = konstaConfig({

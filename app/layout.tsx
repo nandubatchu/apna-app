@@ -33,6 +33,7 @@ export default function RootLayout({
     <html lang="en">
       <head>
         <link rel="manifest" href="/manifest.webmanifest" />
+        <link rel="icon" type="image/x-icon" href="favicon.ico"></link>
       </head>
 
       <App theme="material">
