@@ -1,7 +1,11 @@
-import Home from "@/components/templates/home";
+import Link from "next/link";
 
 export default function PageComponent() {
   return (
-    <Home></Home>
-  )
+    <div className="flex w-full h-screen">
+      <div className="m-auto">
+        <Link href="/social">Apna Social</Link>
+      </div>
+    </div>
+  );
 }
