@@ -12,7 +12,9 @@ declare global {
         nip19: any; 
     }
 }
-window.nip19 = nip19
+if (typeof window !== "undefined") {
+    window.nip19 = nip19
+}
 
 export const GenerateKeyPair = () => {
     let sk = generateSecretKey() // `sk` is a Uint8Array
