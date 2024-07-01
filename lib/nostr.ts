@@ -6,6 +6,12 @@ import { initNostrWasm } from 'nostr-wasm'
 
 // make sure this promise resolves before your app starts calling finalizeEvent or verifyEvent
 const initPromise = initNostrWasm().then(setNostrWasm)
+
+declare global {
+    interface Window { 
+        nip19: any; 
+    }
+}
 window.nip19 = nip19
 
 export const GenerateKeyPair = () => {
