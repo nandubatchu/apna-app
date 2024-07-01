@@ -26,6 +26,7 @@ import {
 } from "@/components/atoms/drawer";
 import { Header } from "@/components/organisms/header";
 import { Feed } from "@/components/molecules/feed";
+import ButtonIcon from "@/components/molecules/ButtonIcon";
 
 const config = {
   tabs: [
@@ -39,6 +40,7 @@ const config = {
 export default function Home() {
   return (
     <>
+      <ButtonIcon className="fixed bottom-[60px] right-[10px]"></ButtonIcon>
       <Drawer direction="left">
         <Header>
           <DrawerTrigger>
