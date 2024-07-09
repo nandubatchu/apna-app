@@ -1,5 +1,4 @@
-import { FetchGlobalNoteEvents } from "@/lib/nostr";
-import { SimplePool, Event } from "nostr-tools";
+\import { SimplePool, Event } from "nostr-tools";
 import { useEffect, useState } from "react";
 import Image from "next/image"
 
