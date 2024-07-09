@@ -1,5 +1,6 @@
 "use client";
-import Home from "@/components/templates/home";
+// import Home from "@/components/templates/home";
+import Social from "@/components/templates/Social";
 import { GenerateKeyPair } from "@/lib/nostr";
 import { getKeyPairFromLocalStorage, saveKeyPairToLocalStorage } from "@/lib/utils";
 import { useEffect } from "react";
@@ -18,5 +19,5 @@ export default function PageComponent() {
   useEffect(() => {
     initialiseKeyPair()
   }, []);
-  return <Home></Home>;
+  return <Social></Social>;
 }

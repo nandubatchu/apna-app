@@ -8,8 +8,8 @@ import { initNostrWasm } from 'nostr-wasm'
 const initPromise = initNostrWasm().then(setNostrWasm)
 
 declare global {
-    interface Window { 
-        nip19: any; 
+    interface Window {
+        nip19: any;
     }
 }
 if (typeof window !== "undefined") {
@@ -57,14 +57,14 @@ export const CreateEvent = async (nsec: string) => {
 
         relay.subscribe([
             {
-              kinds: [1],
-              authors: [getPublicKey(sk)],
+                kinds: [1],
+                authors: [getPublicKey(sk)],
             },
-          ], {
+        ], {
             onevent(e) {
-              console.log('got event:', e)
+                console.log('got event:', e)
             }
-          })
+        })
 
         const evt = await relay.publish(event)
         console.log(`published event - ${evt}`)
