@@ -4,6 +4,7 @@ import Social from "@/components/templates/Social";
 import { GenerateKeyPair } from "@/lib/nostr";
 import { getKeyPairFromLocalStorage, saveKeyPairToLocalStorage } from "@/lib/utils";
 import { useEffect } from "react";
+import { ApnaHost } from "@apna/sdk";
 
 const initialiseKeyPair = () => {
   // find the keys in local storage
@@ -17,7 +18,13 @@ const initialiseKeyPair = () => {
 
 export default function PageComponent() {
   useEffect(() => {
+    const apna = new ApnaHost({methodHandlers: {
+      getPublicKey: () => {
+        const existingKeyPair = getKeyPairFromLocalStorage();
+        return existingKeyPair!.npub
+      }
+    }})
     initialiseKeyPair()
   }, []);
-  return <Social></Social>;
+  return <><iframe id="miniAppIframe" src="http://localhost:3001/"></iframe><Social></Social></>;
 }
