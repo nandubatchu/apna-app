@@ -32,7 +32,7 @@
         {
             "name": "Social",
             "short_name": "Social",
-            "url": "/social",
+            "url": "/social?miniAppUrl=https://social-mini-app.vercel.app",
             "icons": [
                 {
                     "src": "/icon-192x192.png",

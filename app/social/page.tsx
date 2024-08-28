@@ -1,10 +1,15 @@
 "use client";
+
 // import Home from "@/components/templates/home";
 import Social from "@/components/templates/Social";
 import { GenerateKeyPair } from "@/lib/nostr";
 import { getKeyPairFromLocalStorage, saveKeyPairToLocalStorage } from "@/lib/utils";
-import { useEffect } from "react";
-import { ApnaHost } from "@apna/sdk";
+import { useEffect, useState, useCallback } from "react";
+import { SimplePool, Event } from "nostr-tools";
+import { usePathname, useSearchParams, useRouter } from "next/navigation";
+
+// import { ApnaHost } from "@apna/sdk";
+
 
 const initialiseKeyPair = () => {
   // find the keys in local storage
@@ -16,15 +21,79 @@ const initialiseKeyPair = () => {
   }
 };
 
+// Methods
+const methodHandlers = {
+  getPublicKey: () => {
+    const existingKeyPair = getKeyPairFromLocalStorage();
+    return existingKeyPair!.npub
+  },
+  nostr: {
+    subscribeToEvents: (filters: any[], onevent: (event: any) => void) => {
+      const pool = new SimplePool();
+      const RELAYS = ["wss://relay.damus.io"];
+      const sub = pool.subscribeMany(
+        RELAYS,
+        [
+          {
+            kinds: [1],
+            limit: 10,
+          },
+        ],
+        {
+          onevent(evt) {
+            onevent(evt)
+          },
+        }
+      );
+      onevent({"content": "valuable content"})
+      setTimeout(() => {
+        onevent({"content": "valuable content 2"})
+      }, 5000);
+    }
+  }
+}
+
+// Page
 export default function PageComponent() {
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const [iframeSrc, setIframeSrc] = useState<string>();
   useEffect(() => {
-    const apna = new ApnaHost({methodHandlers: {
-      getPublicKey: () => {
-        const existingKeyPair = getKeyPairFromLocalStorage();
-        return existingKeyPair!.npub
+    if (typeof window !== "undefined") {
+      const init = async () => {
+        const { ApnaHost } = (await import('@apna/sdk'))
+
+        const apna = new ApnaHost({
+          methodHandlers
+        })
+        console.log('initialised')
+        if (searchParams.get('miniAppUrl') === null) {
+          router.push(pathname + '?' + createQueryString('miniAppUrl', 'http://localhost:3001'))
+        }
+        // setIframeSrc("http://localhost:3001")
       }
-    }})
+      init()
+    }
+
     initialiseKeyPair()
   }, []);
-  return <><iframe id="miniAppIframe" src="http://localhost:3001/"></iframe><Social></Social></>;
+
+  // Get a new searchParams string by merging the current
+  // searchParams with a provided key/value pair
+  const createQueryString = useCallback(
+    (name: string, value: string) => {
+      const params = new URLSearchParams(searchParams.toString())
+      params.set(name, value)
+ 
+      return params.toString()
+    },
+    [searchParams]
+  )
+
+  return (
+    <div className="h-screen w-screen">
+      <iframe id="miniAppIframe" src={searchParams.get('miniAppUrl') || ""} style={{ overflow: "hidden", height: "100%", width: "100%" }} height="100%" width="100%"></iframe>
+    </div>
+  );
 }
