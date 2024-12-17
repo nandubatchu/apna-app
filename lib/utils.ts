@@ -20,7 +20,7 @@ export function getKeyPairFromLocalStorage() {
 }
 
 export function getProfileFromLocalStorage() {
-  return localStorage.getItem('profile') && JSON.parse(localStorage.getItem('profile'));
+  return localStorage.getItem('profile') && JSON.parse(localStorage.getItem('profile')!);
 }
 
 export function saveProfileToLocalStorage(profile: any) {
