@@ -18,3 +18,11 @@ export function getKeyPairFromLocalStorage() {
   }
   return null;
 }
+
+export function getProfileFromLocalStorage() {
+  return localStorage.getItem('profile') && JSON.parse(localStorage.getItem('profile'));
+}
+
+export function saveProfileToLocalStorage(profile: any) {
+  localStorage.setItem('profile', JSON.stringify(profile));
+}

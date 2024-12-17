@@ -3,6 +3,10 @@ import * as nip19 from 'nostr-tools/nip19'
 import { Relay } from 'nostr-tools/relay'
 import { setNostrWasm, generateSecretKey, finalizeEvent, verifyEvent } from 'nostr-tools/wasm'
 import { initNostrWasm } from 'nostr-wasm'
+import * as crypto from 'crypto'
+
+const RELAY = "wss://relay.snort.social/"
+// const RELAY = "wss://relay.damus.io/"
 
 // make sure this promise resolves before your app starts calling finalizeEvent or verifyEvent
 const initPromise = initNostrWasm().then(setNostrWasm)
@@ -35,6 +39,50 @@ export const GenerateKeyPair = () => {
     return keyPair
 }
 
+export const InitialiseProfile = async (nsec: string) => {
+    let nprofile = nip19.nprofileEncode({ pubkey: getPublicKey(nip19.decode(nsec).data as Uint8Array), relays: [RELAY] })
+    let metadata = {
+        name: crypto.randomBytes(10).toString('hex').slice(0, 10),
+        about: "Bitcoin Enthusiast"
+    }
+    await publishKind0(nsec, metadata)
+    let profile = {
+        nprofile,
+        metadata
+    }
+    return profile
+}
+
+const publishEvent = async (nsec: string, event: any) => {
+    const decodedNsec = nip19.decode(nsec);
+    if (decodedNsec.type != "nsec") {
+        throw new Error("invalid nsec");
+
+    }
+    const sk = decodedNsec.data;
+    await initPromise;
+    let signedEvent = finalizeEvent(event, sk)
+    let isGood = verifyEvent(signedEvent)
+    if (isGood) {
+        const relay = await Relay.connect(RELAY)
+        console.log(`connected to ${relay.url}`)
+        const publishedEvent = await relay.publish(signedEvent)
+        console.log(`published event - ${publishedEvent}`)
+        relay.close()
+    }
+}
+
+const publishKind0 = async (nsec: string, profile: any) => {
+    const event = {
+        kind: 0,
+        created_at: Math.floor(Date.now() / 1000),
+        tags: [],
+        content: JSON.stringify(profile),
+    }
+    await publishEvent(nsec, event)
+}
+
+
 export const CreateEvent = async (nsec: string) => {
     const decodedNsec = nip19.decode(nsec);
     if (decodedNsec.type != "nsec") {
@@ -52,7 +100,7 @@ export const CreateEvent = async (nsec: string) => {
 
     let isGood = verifyEvent(event)
     if (isGood) {
-        const relay = await Relay.connect('wss://relay.damus.io/')
+        const relay = await Relay.connect(RELAY)
         console.log(`connected to ${relay.url}`)
 
         relay.subscribe([

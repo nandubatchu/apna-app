@@ -2,8 +2,8 @@
 
 // import Home from "@/components/templates/home";
 import Social from "@/components/templates/Social";
-import { GenerateKeyPair } from "@/lib/nostr";
-import { getKeyPairFromLocalStorage, saveKeyPairToLocalStorage } from "@/lib/utils";
+import { GenerateKeyPair, InitialiseProfile } from "@/lib/nostr";
+import { getKeyPairFromLocalStorage, saveKeyPairToLocalStorage, getProfileFromLocalStorage, saveProfileToLocalStorage } from "@/lib/utils";
 import { useEffect, useState, useCallback } from "react";
 import { SimplePool, Event } from "nostr-tools";
 import { usePathname, useSearchParams, useRouter } from "next/navigation";
@@ -21,35 +21,51 @@ const initialiseKeyPair = () => {
   }
 };
 
+const initialiseProfile = async () => {
+  // find the keys in local storage
+  const existingProfile = getProfileFromLocalStorage();
+  // if not found publish and set to local storage
+  if (!existingProfile) {
+    initialiseKeyPair();
+    const existingKeyPair = getKeyPairFromLocalStorage();
+    const profile = await InitialiseProfile(existingKeyPair!.nsec);
+    saveProfileToLocalStorage(profile);
+  }
+}
+
 // Methods
 const methodHandlers = {
-  getPublicKey: () => {
-    const existingKeyPair = getKeyPairFromLocalStorage();
-    return existingKeyPair!.npub
-  },
+  // getPublicKey: () => {
+  //   const existingKeyPair = getKeyPairFromLocalStorage();
+  //   return existingKeyPair!.npub
+  // },
   nostr: {
-    subscribeToEvents: (filters: any[], onevent: (event: any) => void) => {
-      const pool = new SimplePool();
-      const RELAYS = ["wss://relay.damus.io"];
-      const sub = pool.subscribeMany(
-        RELAYS,
-        [
-          {
-            kinds: [1],
-            limit: 10,
-          },
-        ],
-        {
-          onevent(evt) {
-            onevent(evt)
-          },
-        }
-      );
-      onevent({"content": "valuable content"})
-      setTimeout(() => {
-        onevent({"content": "valuable content 2"})
-      }, 5000);
-    }
+    getProfile: () => {
+      let profile = getProfileFromLocalStorage();
+      return profile!
+    },
+    // subscribeToEvents: (filters: any[], onevent: (event: any) => void) => {
+    //   const pool = new SimplePool();
+    //   const RELAYS = ["wss://relay.damus.io"];
+    //   const sub = pool.subscribeMany(
+    //     RELAYS,
+    //     [
+    //       {
+    //         kinds: [1],
+    //         limit: 10,
+    //       },
+    //     ],
+    //     {
+    //       onevent(evt) {
+    //         onevent(evt)
+    //       },
+    //     }
+    //   );
+    //   onevent({"content": "valuable content"})
+    //   setTimeout(() => {
+    //     onevent({"content": "valuable content 2"})
+    //   }, 5000);
+    // }
   }
 }
 
@@ -63,13 +79,14 @@ export default function PageComponent() {
     if (typeof window !== "undefined") {
       const init = async () => {
         const { ApnaHost } = (await import('@apna/sdk'))
-
+        
+        await initialiseProfile();
         const apna = new ApnaHost({
           methodHandlers
         })
         console.log('initialised')
         if (searchParams.get('miniAppUrl') === null) {
-          router.push(pathname + '?' + createQueryString('miniAppUrl', 'http://localhost:3001'))
+          router.push(pathname + '?' + createQueryString('miniAppUrl', process.env.NODE_ENV ? 'https://social-mini-app.vercel.app/' : 'http://localhost:3001'))
         }
         // setIframeSrc("http://localhost:3001")
       }
