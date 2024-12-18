@@ -5,8 +5,8 @@ import { setNostrWasm, generateSecretKey, finalizeEvent, verifyEvent } from 'nos
 import { initNostrWasm } from 'nostr-wasm'
 import * as crypto from 'crypto'
 
-const RELAY = "wss://relay.snort.social/"
-// const RELAY = "wss://relay.damus.io/"
+// const RELAY = "wss://relay.snort.social/"
+const RELAY = "wss://relay.damus.io/"
 
 // make sure this promise resolves before your app starts calling finalizeEvent or verifyEvent
 const initPromise = initNostrWasm().then(setNostrWasm)
@@ -80,6 +80,103 @@ const publishKind0 = async (nsec: string, profile: any) => {
         content: JSON.stringify(profile),
     }
     await publishEvent(nsec, event)
+}
+
+const publishKind1 = async (nsec: string, content: string) => {
+    const event = {
+        kind: 1,
+        created_at: Math.floor(Date.now() / 1000),
+        tags: [],
+        content,
+    }
+    await publishEvent(nsec, event)
+}
+
+const publishKind3 = async (nsec: string, tags: any[]) => {
+    const event = {
+        kind: 3,
+        created_at: Math.floor(Date.now() / 1000),
+        tags,
+        content: "",
+    }
+    await publishEvent(nsec, event)
+}
+
+export const FollowNpub = async (npub: string, nsec: string) => {
+    const existingContacts = await fetchFromRelay([{
+        kinds: [3],
+        authors: [getPublicKey(nip19.decode(nsec).data as Uint8Array)]
+    }])
+    console.log(existingContacts)
+    let newTags = []
+    if (existingContacts) {
+        // @ts-ignore   
+        newTags.push(...existingContacts.tags, ["p", nip19.decode(npub).data as string])
+        newTags = Array.from(
+            new Set(newTags.map((item) => JSON.stringify(item)))
+          ).map((json) => JSON.parse(json));
+    } else {
+        newTags.push(["p", nip19.decode(npub).data as string])
+    }
+    
+
+    return publishKind3(nsec, newTags)
+}
+
+export const UnfollowNpub = async (npub: string, nsec: string) => {
+    const existingContacts = await fetchFromRelay([{
+        kinds: [3],
+        authors: [getPublicKey(nip19.decode(nsec).data as Uint8Array)]
+    }])
+    console.log(existingContacts)
+    if (!existingContacts) {
+        return
+    } 
+    // @ts-ignore   
+    const newTags = existingContacts.tags.filter(item => item[1] !== nip19.decode(npub).data as string);
+    
+    return publishKind3(nsec, newTags)
+    
+}
+
+export const PublishNote = async (content: any, nsec: string) => {
+    return publishKind1(nsec, content)
+}
+
+export const UpdateProfile = async (profile: any, nsec: string) => {
+    return publishKind0(nsec, profile.metadata)
+}
+
+const fetchFromRelay = async (filters: any[]) => {
+    return new Promise(async (resolve, reject) => {
+        const relay = await Relay.connect(RELAY)
+        console.log(`connected to ${relay.url}`)
+        relay.subscribe(filters, {
+            onevent(e) {
+                console.log('## got event:', e)
+                resolve(e)
+            }
+        })
+        setTimeout(() => resolve(null), 5000)
+    })
+}
+
+export const Test = async () => {
+    const relay = await Relay.connect(RELAY)
+    console.log(`connected to ${relay.url}`)
+    console.log(nip19.decode("npub1w46mjnagz9f0u556fzva8ypfftc5yfm32n8ygqmd2r32mxw4cfnsvkvy9e").data)
+    relay.subscribe([
+        {
+            kinds: [0,3],
+            authors: [nip19.decode("npub1w46mjnagz9f0u556fzva8ypfftc5yfm32n8ygqmd2r32mxw4cfnsvkvy9e").data as string],
+        },
+    ], {
+        onevent(e) {
+            console.log('## got event:', e)
+        }
+    })
+    await new Promise((resolve) => setTimeout(resolve, 2000))
+    return
 }
 
 

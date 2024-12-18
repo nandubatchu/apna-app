@@ -2,7 +2,7 @@
 
 // import Home from "@/components/templates/home";
 import Social from "@/components/templates/Social";
-import { GenerateKeyPair, InitialiseProfile } from "@/lib/nostr";
+import { GenerateKeyPair, InitialiseProfile, Test, FollowNpub, UnfollowNpub, PublishNote, UpdateProfile } from "@/lib/nostr";
 import { getKeyPairFromLocalStorage, saveKeyPairToLocalStorage, getProfileFromLocalStorage, saveProfileToLocalStorage } from "@/lib/utils";
 import { useEffect, useState, useCallback } from "react";
 import { SimplePool, Event } from "nostr-tools";
@@ -44,6 +44,22 @@ const methodHandlers = {
       let profile = getProfileFromLocalStorage();
       return profile!
     },
+    updateProfile: async (profile: any) => {
+      const existingKeyPair = getKeyPairFromLocalStorage();
+      return UpdateProfile(profile, existingKeyPair!.nsec);
+    },
+    followNpub: async (npub: string) => {
+      const existingKeyPair = getKeyPairFromLocalStorage();
+      return FollowNpub(npub, existingKeyPair!.nsec);
+    },
+    unfollowNpub: async (npub: string) => {
+      const existingKeyPair = getKeyPairFromLocalStorage();
+      return UnfollowNpub(npub, existingKeyPair!.nsec);
+    },
+    publishNote: async (content: string) => {
+      const existingKeyPair = getKeyPairFromLocalStorage();
+      return PublishNote(content, existingKeyPair!.nsec);
+    },
     // subscribeToEvents: (filters: any[], onevent: (event: any) => void) => {
     //   const pool = new SimplePool();
     //   const RELAYS = ["wss://relay.damus.io"];
@@ -81,12 +97,15 @@ export default function PageComponent() {
         const { ApnaHost } = (await import('@apna/sdk'))
         
         await initialiseProfile();
+        // @ts-ignore
+        window.methodHandlers = methodHandlers
         const apna = new ApnaHost({
           methodHandlers
         })
         console.log('initialised')
         if (searchParams.get('miniAppUrl') === null) {
-          router.push(pathname + '?' + createQueryString('miniAppUrl', process.env.NODE_ENV ? 'https://social-mini-app.vercel.app/' : 'http://localhost:3001'))
+          console.log('he',process.env.NODE_ENV);
+          router.push(pathname + '?' + createQueryString('miniAppUrl', 1==1 ? 'https://social-mini-app.vercel.app/' : 'http://localhost:3001'))
         }
         // setIframeSrc("http://localhost:3001")
       }
