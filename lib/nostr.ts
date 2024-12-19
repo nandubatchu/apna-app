@@ -139,12 +139,46 @@ export const UnfollowNpub = async (npub: string, nsec: string) => {
     
 }
 
+const subscribeToEvents = async (filters: any[], callback: (e: any) => void) => {
+    const relay = await Relay.connect(RELAY)
+    console.log(`connected to ${relay.url}`)
+    relay.subscribe(filters, {
+        onevent(e) {
+            console.log('## got event:', e)
+            callback(e)
+        }
+    })
+}
+
 export const PublishNote = async (content: any, nsec: string) => {
     return publishKind1(nsec, content)
 }
 
 export const UpdateProfile = async (profile: any, nsec: string) => {
     return publishKind0(nsec, profile.metadata)
+}
+
+export const SubscribeToFeed = async (feedType: string, callback: (note: any) => void, npub: string) => {
+    const existingContacts = await fetchFromRelay([{
+        kinds: [3],
+        authors: [nip19.decode(npub).data as string]
+    }])
+    console.log(existingContacts)
+    if (!existingContacts) {
+        return
+    } 
+    await subscribeToEvents([{
+        kinds: [1],
+        // @ts-ignore
+        authors: existingContacts.tags.map((tag) => tag[1])
+    }], callback)
+}
+
+export const SubscribeToNotifications = async (callback: (note: any) => void, npub: string) => {
+    await subscribeToEvents([{
+        kinds: [1],
+        authors: []
+    }], callback)
 }
 
 const fetchFromRelay = async (filters: any[]) => {
