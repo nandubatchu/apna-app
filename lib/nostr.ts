@@ -63,6 +63,7 @@ const publishEvent = async (nsec: string, event: any) => {
     await initPromise;
     let signedEvent = finalizeEvent(event, sk)
     let isGood = verifyEvent(signedEvent)
+    console.log(`signedEvent - ${JSON.stringify(signedEvent)}`)
     if (isGood) {
         const relay = await Relay.connect(RELAY)
         console.log(`connected to ${relay.url}`)
@@ -82,11 +83,11 @@ const publishKind0 = async (nsec: string, profile: any) => {
     await publishEvent(nsec, event)
 }
 
-const publishKind1 = async (nsec: string, content: string) => {
+const publishKind1 = async (nsec: string, content: string, tags: any[] = []) => {
     const event = {
         kind: 1,
         created_at: Math.floor(Date.now() / 1000),
-        tags: [],
+        tags,
         content,
     }
     await publishEvent(nsec, event)
@@ -98,6 +99,26 @@ const publishKind3 = async (nsec: string, tags: any[]) => {
         created_at: Math.floor(Date.now() / 1000),
         tags,
         content: "",
+    }
+    await publishEvent(nsec, event)
+}
+
+const publishKind6 = async (nsec: string, content: string, tags: any[]) => {
+    const event = {
+        kind: 6,
+        created_at: Math.floor(Date.now() / 1000),
+        tags,
+        content,
+    }
+    await publishEvent(nsec, event)
+}
+
+const publishKind7 = async (nsec: string, tags: any[]) => {
+    const event = {
+        kind: 7,
+        created_at: Math.floor(Date.now() / 1000),
+        tags,
+        content: "+",
     }
     await publishEvent(nsec, event)
 }
@@ -152,6 +173,53 @@ const subscribeToEvents = async (filters: any[], callback: (e: any) => void) => 
 
 export const PublishNote = async (content: any, nsec: string) => {
     return publishKind1(nsec, content)
+}
+
+export const RepostNote = async (noteId: string, quoteContent: string, nsec: string) => {
+    const note: any = await fetchFromRelay([{
+        ids: [nip19.decode(noteId).data as string]
+    }])
+
+    if (quoteContent) {
+        const content = quoteContent
+        const tags = [
+            ['e', note.id, "", "mention"],
+            ['p', note.pubkey, "", "mention"],
+            ['q', note.id]
+        ]
+        return publishKind1(nsec, `${content}\nnostr:${nip19.noteEncode(note.id)}`, tags)
+    } else {
+        const content = JSON.stringify(note)
+        const tags = [
+            ['e', note.id],
+            ['p', note.pubkey],
+        ]
+        return publishKind6(nsec, content, tags)
+    }
+    
+    
+}
+
+export const LikeNote = async (noteId: string, nsec: string) => {
+    const note: any = await fetchFromRelay([{
+        ids: [nip19.decode(noteId).data as string]
+    }])
+    const tags = [
+        ['e', note.id],
+        ['p', note.pubkey],
+    ]
+    return publishKind7(nsec, tags)
+}
+
+export const ReplyToNote = async (noteId: string, content: string, nsec: string) => {
+    const note: any = await fetchFromRelay([{
+        ids: [nip19.decode(noteId).data as string]
+    }])
+    const tags = [
+        ['e', note.id],
+        ['p', note.pubkey],
+    ]
+    return publishKind1(nsec, content, tags)
 }
 
 export const UpdateProfile = async (profile: any, nsec: string) => {

@@ -2,7 +2,7 @@
 
 // import Home from "@/components/templates/home";
 import Social from "@/components/templates/Social";
-import { GenerateKeyPair, InitialiseProfile, Test, FollowNpub, UnfollowNpub, PublishNote, UpdateProfile, SubscribeToFeed, SubscribeToNotifications } from "@/lib/nostr";
+import { GenerateKeyPair, InitialiseProfile, Test, FollowNpub, UnfollowNpub, PublishNote, UpdateProfile, SubscribeToFeed, SubscribeToNotifications, RepostNote, LikeNote, ReplyToNote } from "@/lib/nostr";
 import { getKeyPairFromLocalStorage, saveKeyPairToLocalStorage, getProfileFromLocalStorage, saveProfileToLocalStorage } from "@/lib/utils";
 import { useEffect, useState, useCallback } from "react";
 import { SimplePool, Event } from "nostr-tools";
@@ -67,7 +67,19 @@ const methodHandlers = {
     subscribeToNotifications: async (callback: (note: any) => void) => {
       const existingKeyPair = getKeyPairFromLocalStorage();
       return SubscribeToNotifications(callback, existingKeyPair!.npub);
-    }
+    },
+    repostNote: async (noteId: string, quoteContent: string) => {
+      const existingKeyPair = getKeyPairFromLocalStorage();
+      return RepostNote(noteId, quoteContent, existingKeyPair!.nsec);
+    },
+    likeNote: async (noteId: string) => {
+      const existingKeyPair = getKeyPairFromLocalStorage();
+      return LikeNote(noteId, existingKeyPair!.nsec);
+    },
+    replyToNote: async (noteId: string, content: string) => {
+      const existingKeyPair = getKeyPairFromLocalStorage();
+      return ReplyToNote(noteId, content, existingKeyPair!.nsec);
+    },
     // subscribeToEvents: (filters: any[], onevent: (event: any) => void) => {
     //   const pool = new SimplePool();
     //   const RELAYS = ["wss://relay.damus.io"];
