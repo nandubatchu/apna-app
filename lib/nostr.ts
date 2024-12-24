@@ -249,6 +249,13 @@ export const SubscribeToNotifications = async (callback: (note: any) => void, np
     }], callback)
 }
 
+export const GetNoteReplies = async (noteId: string) => {
+    return fetchAllFromRelay([{
+        kinds: [1],
+        "#e": [nip19.decode(noteId).data as string]
+    }])
+}
+
 const fetchFromRelay = async (filters: any[]) => {
     return new Promise(async (resolve, reject) => {
         const relay = await Relay.connect(RELAY)
@@ -260,6 +267,25 @@ const fetchFromRelay = async (filters: any[]) => {
             }
         })
         setTimeout(() => resolve(null), 5000)
+    })
+}
+
+const fetchAllFromRelay = async (filters: any[]) => {
+    return new Promise(async (resolve, reject) => {
+        const results: any[] = []
+        const relay = await Relay.connect(RELAY)
+        console.log(`connected to ${relay.url}`)
+        relay.subscribe(filters, {
+            onevent(e) {
+                console.log('## got event:', e)
+                results.push(e)
+            },
+            oneose() {
+                resolve(results)
+                relay.close()
+            }
+        })
+        setTimeout(() => resolve(null), 10000)
     })
 }
 
