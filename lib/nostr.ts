@@ -46,6 +46,9 @@ export const InitialiseProfile = async (nsec: string) => {
         about: "Bitcoin Enthusiast"
     }
     await publishKind0(nsec, metadata)
+    await publishKind3(nsec, [
+        ['r', RELAY, 'read', 'write']
+    ])
     let profile = {
         nprofile,
         metadata
@@ -240,7 +243,7 @@ export const SubscribeToFeed = async (npub: string, feedType: string, callback: 
             await subscribeToEvents([{
                 kinds: [1],
                 // @ts-ignore
-                authors: existingContacts.tags.map((tag) => tag[1])
+                authors: existingContacts.tags.map((tag) => tag[0] === "p" && tag[1]).filter(a => a)
             }], callback)
             break;
 
@@ -291,7 +294,7 @@ export const GetNpubProfile = async (npub: string) => {
         // @ts-ignore
         followers: followers.map((e) => e.pubkey),
         // @ts-ignore
-        following: following.tags.map((tag) => tag[1])
+        following: following.tags.map((tag) => tag[0] === "p" && tag[1]).filter(a => a)
     }
 }
 
