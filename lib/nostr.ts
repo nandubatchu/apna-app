@@ -226,20 +226,35 @@ export const UpdateProfile = async (profile: any, nsec: string) => {
     return publishKind0(nsec, profile.metadata)
 }
 
-export const SubscribeToFeed = async (feedType: string, callback: (note: any) => void, npub: string) => {
-    const existingContacts = await fetchFromRelay([{
-        kinds: [3],
-        authors: [nip19.decode(npub).data as string]
-    }])
-    console.log(existingContacts)
-    if (!existingContacts) {
-        return
-    } 
-    await subscribeToEvents([{
-        kinds: [1],
-        // @ts-ignore
-        authors: existingContacts.tags.map((tag) => tag[1])
-    }], callback)
+export const SubscribeToFeed = async (npub: string, feedType: string, callback: (note: any) => void) => {
+    switch (feedType) {
+        case "FOLLOWING_FEED":
+            const existingContacts = await fetchFromRelay([{
+                kinds: [3],
+                authors: [nip19.decode(npub).data as string]
+            }])
+            console.log(existingContacts)
+            if (!existingContacts) {
+                return
+            } 
+            await subscribeToEvents([{
+                kinds: [1],
+                // @ts-ignore
+                authors: existingContacts.tags.map((tag) => tag[1])
+            }], callback)
+            break;
+
+        case "NOTES_FEED":
+            await subscribeToEvents([{
+                kinds: [1],
+                // @ts-ignore
+                authors: [nip19.decode(npub).data as string]
+            }], callback)
+            break;
+    
+        default:
+            break;
+    }
 }
 
 export const SubscribeToNotifications = async (callback: (note: any) => void, npub: string) => {
@@ -254,6 +269,30 @@ export const GetNoteReplies = async (noteId: string) => {
         kinds: [1],
         "#e": [nip19.decode(noteId).data as string]
     }])
+}
+
+export const GetNpubProfile = async (npub: string) => {
+    const metadata = await fetchFromRelay([{
+        kinds: [0],
+        authors: [nip19.decode(npub).data as string]
+    }])
+    const following = await fetchFromRelay([{
+        kinds: [3],
+        authors: [nip19.decode(npub).data as string]
+    }])
+
+    const followers = await fetchAllFromRelay([{
+        kinds: [3],
+        "#p": [nip19.decode(npub).data as string]
+    }])
+    
+    return {
+        metadata,
+        // @ts-ignore
+        followers: followers.map((e) => e.pubkey),
+        // @ts-ignore
+        following: following.tags.map((tag) => tag[1])
+    }
 }
 
 const fetchFromRelay = async (filters: any[]) => {

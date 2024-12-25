@@ -2,7 +2,7 @@
 
 // import Home from "@/components/templates/home";
 import Social from "@/components/templates/Social";
-import { GenerateKeyPair, InitialiseProfile, Test, FollowNpub, UnfollowNpub, PublishNote, UpdateProfile, SubscribeToFeed, SubscribeToNotifications, RepostNote, LikeNote, ReplyToNote } from "@/lib/nostr";
+import { GenerateKeyPair, InitialiseProfile, Test, FollowNpub, UnfollowNpub, PublishNote, UpdateProfile, SubscribeToFeed, SubscribeToNotifications, RepostNote, LikeNote, ReplyToNote, GetNpubProfile } from "@/lib/nostr";
 import { getKeyPairFromLocalStorage, saveKeyPairToLocalStorage, getProfileFromLocalStorage, saveProfileToLocalStorage } from "@/lib/utils";
 import { useEffect, useState, useCallback } from "react";
 import { SimplePool, Event } from "nostr-tools";
@@ -35,14 +35,10 @@ const initialiseProfile = async () => {
 
 // Methods
 const methodHandlers = {
-  // getPublicKey: () => {
-  //   const existingKeyPair = getKeyPairFromLocalStorage();
-  //   return existingKeyPair!.npub
-  // },
   nostr: {
     getProfile: () => {
-      let profile = getProfileFromLocalStorage();
-      return profile!
+      const existingKeyPair = getKeyPairFromLocalStorage();
+      return GetNpubProfile(existingKeyPair!.npub)
     },
     updateProfile: async (profile: any) => {
       const existingKeyPair = getKeyPairFromLocalStorage();
@@ -62,7 +58,10 @@ const methodHandlers = {
     },
     subscribeToFeed: async (feedType: string, callback: (note: any) => void) => {
       const existingKeyPair = getKeyPairFromLocalStorage();
-      return SubscribeToFeed(feedType, callback, existingKeyPair!.npub);
+      return SubscribeToFeed(existingKeyPair!.npub, feedType, callback);
+    },
+    subscribeToNpubFeed: async (npub: string, feedType: string, callback: (note: any) => void) => {
+      return SubscribeToFeed(npub, feedType, callback);
     },
     subscribeToNotifications: async (callback: (note: any) => void) => {
       const existingKeyPair = getKeyPairFromLocalStorage();
@@ -80,28 +79,9 @@ const methodHandlers = {
       const existingKeyPair = getKeyPairFromLocalStorage();
       return ReplyToNote(noteId, content, existingKeyPair!.nsec);
     },
-    // subscribeToEvents: (filters: any[], onevent: (event: any) => void) => {
-    //   const pool = new SimplePool();
-    //   const RELAYS = ["wss://relay.damus.io"];
-    //   const sub = pool.subscribeMany(
-    //     RELAYS,
-    //     [
-    //       {
-    //         kinds: [1],
-    //         limit: 10,
-    //       },
-    //     ],
-    //     {
-    //       onevent(evt) {
-    //         onevent(evt)
-    //       },
-    //     }
-    //   );
-    //   onevent({"content": "valuable content"})
-    //   setTimeout(() => {
-    //     onevent({"content": "valuable content 2"})
-    //   }, 5000);
-    // }
+    getNpubProfile: async (npub: string) => {
+      return GetNpubProfile(npub)
+    }
   }
 }
 
