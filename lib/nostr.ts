@@ -218,8 +218,10 @@ export const ReplyToNote = async (noteId: string, content: string, nsec: string)
     const note: any = await fetchFromRelay([{
         ids: [nip19.decode(noteId).data as string]
     }])
+    const eTags: string[][] = note.tags.filter((t: string[]) => t[0] === "e");
     const tags = [
-        ['e', note.id],
+        ...eTags,
+        ['e', note.id, "", eTags.length > 0 ? "reply" : "root"],
         ['p', note.pubkey],
     ]
     return publishKind1(nsec, content, tags)
