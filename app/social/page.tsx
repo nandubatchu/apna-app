@@ -1,37 +1,14 @@
 "use client";
 
-// import Home from "@/components/templates/home";
-import Social from "@/components/templates/Social";
-import { GenerateKeyPair, InitialiseProfile, Test, FollowNpub, UnfollowNpub, PublishNote, UpdateProfile, SubscribeToFeed, SubscribeToNotifications, RepostNote, LikeNote, ReplyToNote, GetNpubProfile } from "@/lib/nostr";
-import { getKeyPairFromLocalStorage, saveKeyPairToLocalStorage, getProfileFromLocalStorage, saveProfileToLocalStorage } from "@/lib/utils";
+import { FollowNpub, UnfollowNpub, PublishNote, UpdateProfile, SubscribeToFeed, SubscribeToNotifications, RepostNote, LikeNote, ReplyToNote, GetNpubProfile } from "@/lib/nostr";
+import { getKeyPairFromLocalStorage } from "@/lib/utils";
 import { useEffect, useState, useCallback } from "react";
-import { SimplePool, Event } from "nostr-tools";
 import { usePathname, useSearchParams, useRouter } from "next/navigation";
 
 // import { ApnaHost } from "@apna/sdk";
 
 
-const initialiseKeyPair = () => {
-  // find the keys in local storage
-  const existingKeyPair = getKeyPairFromLocalStorage();
-  // if not found generate and set to local storage
-  if (!existingKeyPair) {
-    const { nsec, npub } = GenerateKeyPair();
-    saveKeyPairToLocalStorage(npub, nsec);
-  }
-};
 
-const initialiseProfile = async () => {
-  // find the keys in local storage
-  const existingProfile = getProfileFromLocalStorage();
-  // if not found publish and set to local storage
-  if (!existingProfile) {
-    initialiseKeyPair();
-    const existingKeyPair = getKeyPairFromLocalStorage();
-    const profile = await InitialiseProfile(existingKeyPair!.nsec);
-    saveProfileToLocalStorage(profile);
-  }
-}
 
 // Methods
 const methodHandlers = {
@@ -96,13 +73,13 @@ export default function PageComponent() {
       const init = async () => {
         const { ApnaHost } = (await import('@apna/sdk'))
         
-        await initialiseProfile();
+        
         // @ts-ignore
         window.methodHandlers = methodHandlers
         const apna = new ApnaHost({
           methodHandlers
         })
-        console.log('initialised')
+        
         if (searchParams.get('miniAppUrl') === null) {
           console.log('he',process.env.NODE_ENV);
           router.push(pathname + '?' + createQueryString('miniAppUrl', 1==1 ? 'https://social-mini-app.vercel.app/' : 'http://localhost:3001'))
@@ -112,7 +89,6 @@ export default function PageComponent() {
       init()
     }
 
-    initialiseKeyPair()
   }, []);
 
   // Get a new searchParams string by merging the current
