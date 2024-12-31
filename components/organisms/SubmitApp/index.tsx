@@ -49,7 +49,7 @@ export default function SubmitNewApp() {
     // TODO: Implement the submission logic here
     console.log(values)
     const existingKeyPair = getKeyPairFromLocalStorage();
-    await ReplyToNote("note187j8dxwta5zvxle446uqutxue764q79vxmtv85dw7fnujlqgdm2qm7kelc", "JSON.stringify(values)",existingKeyPair.nsec!)
+    await ReplyToNote("note187j8dxwta5zvxle446uqutxue764q79vxmtv85dw7fnujlqgdm2qm7kelc", "JSON.stringify(values)", existingKeyPair!.nsec)
     setIsOpen(false)
   }
 
