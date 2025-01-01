@@ -41,7 +41,7 @@ export default function AppLauncherList() {
 
     const launchApp = (appURL: string) => {
         setSelectedApp(appURL)
-        router.push(`/social?miniAppUrl=${appURL}`)
+        router.push(`/mini-app?miniAppUrl=${appURL}`)
         // alert(`Launching ${appName}`)
 
     }

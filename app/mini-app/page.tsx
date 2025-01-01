@@ -1,64 +1,72 @@
 "use client";
 
-import { FollowNpub, UnfollowNpub, PublishNote, UpdateProfile, SubscribeToFeed, SubscribeToNotifications, RepostNote, LikeNote, ReplyToNote, GetNpubProfile } from "@/lib/nostr";
+import { FollowNpub, UnfollowNpub, PublishNote, UpdateProfile, SubscribeToFeed, SubscribeToNotifications, RepostNote, LikeNote, ReplyToNote, GetNpubProfile, GetNpubProfileMetadata, GetNote, GetNoteReplies } from "@/lib/nostr";
 import { getKeyPairFromLocalStorage } from "@/lib/utils";
 import { useEffect, useState, useCallback } from "react";
 import { usePathname, useSearchParams, useRouter } from "next/navigation";
-
-// import { ApnaHost } from "@apna/sdk";
-
-
-
+import { IHostMethodHandlers } from "@apna/sdk";
 
 // Methods
-const methodHandlers = {
+const methodHandlers: IHostMethodHandlers = {
   nostr: {
-    getProfile: () => {
+    getActiveUserProfile() {
       const existingKeyPair = getKeyPairFromLocalStorage();
       return GetNpubProfile(existingKeyPair!.npub)
     },
-    updateProfile: async (profile: any) => {
+    fetchUserMetadata(npub) {
+      const existingKeyPair = getKeyPairFromLocalStorage();
+      return GetNpubProfileMetadata(existingKeyPair!.npub)
+    },
+    updateProfileMetadata(profile) {
       const existingKeyPair = getKeyPairFromLocalStorage();
       return UpdateProfile(profile, existingKeyPair!.nsec);
     },
-    followNpub: async (npub: string) => {
+    fetchUserProfile(npub) {
+      return GetNpubProfile(npub)
+    },
+    followUser(npub) {
       const existingKeyPair = getKeyPairFromLocalStorage();
       return FollowNpub(npub, existingKeyPair!.nsec);
     },
-    unfollowNpub: async (npub: string) => {
+    unfollowUser(npub) {
       const existingKeyPair = getKeyPairFromLocalStorage();
       return UnfollowNpub(npub, existingKeyPair!.nsec);
     },
-    publishNote: async (content: string) => {
+    fetchNote(noteId, returnReactions) {
+      return GetNote(noteId)
+    },
+    async fetchNoteAndReplies(noteId, returnReactions) {
+      return {
+        note: await GetNote(noteId),
+        replyNotes: await GetNoteReplies(noteId)
+      }
+    },
+    publishNote(content) {
       const existingKeyPair = getKeyPairFromLocalStorage();
       return PublishNote(content, existingKeyPair!.nsec);
     },
-    subscribeToFeed: async (feedType: string, callback: (note: any) => void) => {
-      const existingKeyPair = getKeyPairFromLocalStorage();
-      return SubscribeToFeed(existingKeyPair!.npub, feedType, callback);
-    },
-    subscribeToNpubFeed: async (npub: string, feedType: string, callback: (note: any) => void) => {
-      return SubscribeToFeed(npub, feedType, callback);
-    },
-    subscribeToNotifications: async (callback: (note: any) => void) => {
-      const existingKeyPair = getKeyPairFromLocalStorage();
-      return SubscribeToNotifications(callback, existingKeyPair!.npub);
-    },
-    repostNote: async (noteId: string, quoteContent: string) => {
+    repostNote(noteId, quoteContent) {
       const existingKeyPair = getKeyPairFromLocalStorage();
       return RepostNote(noteId, quoteContent, existingKeyPair!.nsec);
     },
-    likeNote: async (noteId: string) => {
+    likeNote(noteId) {
       const existingKeyPair = getKeyPairFromLocalStorage();
       return LikeNote(noteId, existingKeyPair!.nsec);
     },
-    replyToNote: async (noteId: string, content: string) => {
+    replyToNote(noteId, content) {
       const existingKeyPair = getKeyPairFromLocalStorage();
       return ReplyToNote(noteId, content, existingKeyPair!.nsec);
     },
-    getNpubProfile: async (npub: string) => {
-      return GetNpubProfile(npub)
-    }
+    subscribeToFeed(feedType, onevent, withReactions) {
+      const existingKeyPair = getKeyPairFromLocalStorage();
+      return SubscribeToFeed(existingKeyPair!.npub, feedType, onevent);
+    },
+    subscribeToUserFeed(npub, feedType, onevent, withReactions) {
+      return SubscribeToFeed(npub, feedType, onevent);
+    },
+    // subscribeToUserNotifications(onevent) {
+      
+    // },
   }
 }
 
@@ -73,7 +81,6 @@ export default function PageComponent() {
       const init = async () => {
         const { ApnaHost } = (await import('@apna/sdk'))
         
-        
         // @ts-ignore
         window.methodHandlers = methodHandlers
         const apna = new ApnaHost({
@@ -81,7 +88,6 @@ export default function PageComponent() {
         })
         
         if (searchParams.get('miniAppUrl') === null) {
-          console.log('he',process.env.NODE_ENV);
           router.push(pathname + '?' + createQueryString('miniAppUrl', 1==1 ? 'https://social-mini-app.vercel.app/' : 'http://localhost:3001'))
         }
         // setIframeSrc("http://localhost:3001")

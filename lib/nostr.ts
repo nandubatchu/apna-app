@@ -1,4 +1,4 @@
-import { getPublicKey } from 'nostr-tools/pure'
+import { getPublicKey, VerifiedEvent, Event as NostrEvent } from 'nostr-tools/pure'
 import * as nip19 from 'nostr-tools/nip19'
 import { Relay } from 'nostr-tools/relay'
 import { setNostrWasm, generateSecretKey, finalizeEvent, verifyEvent } from 'nostr-tools/wasm'
@@ -67,13 +67,15 @@ const publishEvent = async (nsec: string, event: any) => {
     let signedEvent = finalizeEvent(event, sk)
     let isGood = verifyEvent(signedEvent)
     console.log(`signedEvent - ${JSON.stringify(signedEvent)}`)
-    if (isGood) {
-        const relay = await Relay.connect(RELAY)
-        console.log(`connected to ${relay.url}`)
-        const publishedEvent = await relay.publish(signedEvent)
-        console.log(`published event - ${publishedEvent}`)
-        relay.close()
+    if (!isGood) {
+        throw new Error("event verification failed")
     }
+    const relay = await Relay.connect(RELAY)
+    console.log(`connected to ${relay.url}`)
+    const publishedEvent = await relay.publish(signedEvent)
+    console.log(`published event - ${publishedEvent}`)
+    relay.close()
+    return signedEvent
 }
 
 const publishKind0 = async (nsec: string, profile: any) => {
@@ -83,7 +85,7 @@ const publishKind0 = async (nsec: string, profile: any) => {
         tags: [],
         content: JSON.stringify(profile),
     }
-    await publishEvent(nsec, event)
+    return publishEvent(nsec, event)
 }
 
 const publishKind1 = async (nsec: string, content: string, tags: any[] = []) => {
@@ -93,7 +95,7 @@ const publishKind1 = async (nsec: string, content: string, tags: any[] = []) => 
         tags,
         content,
     }
-    await publishEvent(nsec, event)
+    return (await publishEvent(nsec, event)) as VerifiedEvent & { kind: 1 }
 }
 
 const publishKind3 = async (nsec: string, tags: any[]) => {
@@ -113,7 +115,7 @@ const publishKind6 = async (nsec: string, content: string, tags: any[]) => {
         tags,
         content,
     }
-    await publishEvent(nsec, event)
+    return (await publishEvent(nsec, event)) as VerifiedEvent & { kind: 6 }
 }
 
 const publishKind7 = async (nsec: string, tags: any[]) => {
@@ -123,7 +125,7 @@ const publishKind7 = async (nsec: string, tags: any[]) => {
         tags,
         content: "+",
     }
-    await publishEvent(nsec, event)
+    return (await publishEvent(nsec, event)) as VerifiedEvent & { kind: 7 }
 }
 
 export const FollowNpub = async (npub: string, nsec: string) => {
@@ -227,8 +229,19 @@ export const ReplyToNote = async (noteId: string, content: string, nsec: string)
     return publishKind1(nsec, content, tags)
 }
 
-export const UpdateProfile = async (profile: any, nsec: string) => {
-    return publishKind0(nsec, profile.metadata)
+export const UpdateProfile = async (profileMetadata: any, nsec: string) => {
+    const npub = getPublicKey(nip19.decode(nsec).data as Uint8Array)
+    const nprofile = await getNprofile(npub)
+    const metadata = JSON.parse((await publishKind0(nsec, profileMetadata) as any).content)
+    const following = await getFollowing(npub)
+    const followers = await getFollowers(npub)
+    
+    return {
+        nprofile,
+        metadata,
+        followers,
+        following
+    }
 }
 
 export const SubscribeToFeed = async (npub: string, feedType: string, callback: (note: any) => void) => {
@@ -270,37 +283,68 @@ export const SubscribeToNotifications = async (callback: (note: any) => void, np
 }
 
 export const GetNoteReplies = async (noteId: string) => {
-    return fetchAllFromRelay([{
+    return (await fetchAllFromRelay([{
         kinds: [1],
         "#e": [nip19.decode(noteId).data as string]
-    }])
+    }])) as (NostrEvent & {kind:1})[]
 }
 
-export const GetNpubProfile = async (npub: string) => {
-    const metadata = await fetchFromRelay([{
-        kinds: [0],
-        authors: [nip19.decode(npub).data as string]
-    }])
-    const following = await fetchFromRelay([{
+const getNprofile = async (npub: string) => {
+    const config = fetchFromRelay([{
         kinds: [3],
         authors: [nip19.decode(npub).data as string]
     }])
+    // @ts-ignore
+    const relays = config.tags.map((tag) => tag[0] === "r" && tag[1]).filter(a => a) || [RELAY]
+    return nip19.nprofileEncode({ pubkey: nip19.decode(npub).data as string, relays })
+}
 
-    const followers = await fetchAllFromRelay([{
+export const GetNpubProfileMetadata = async (npub: string) => {
+    return JSON.parse((await fetchFromRelay([{
+        kinds: [0],
+        authors: [nip19.decode(npub).data as string]
+    }]) as any).content)
+}
+
+export const GetNote = async (noteId: string) => {
+    return (await fetchFromRelay([{
+        kinds: [1]
+    }])) as NostrEvent & {kind: 1}
+}
+
+const getFollowing = async (npub: string) => {
+    const following = fetchFromRelay([{
+        kinds: [3],
+        authors: [nip19.decode(npub).data as string]
+    }])
+    // @ts-ignore
+    return following.tags.map((tag) => tag[0] === "p" && tag[1]).filter(a => a)
+}   
+
+const getFollowers = async (npub: string) => {
+    const followers = fetchAllFromRelay([{
         kinds: [3],
         "#p": [nip19.decode(npub).data as string]
     }])
+    // @ts-ignore
+    return followers.map((e) => e.pubkey)
+}
+
+export const GetNpubProfile = async (npub: string) => {
+    const nprofile = await getNprofile(npub)
+    const metadata = await getNpubProfileMetadata(npub)
+    const following = await getFollowing(npub)
+    const followers = await getFollowers(npub)
     
     return {
+        nprofile,
         metadata,
-        // @ts-ignore
-        followers: followers.map((e) => e.pubkey),
-        // @ts-ignore
-        following: following.tags.map((tag) => tag[0] === "p" && tag[1]).filter(a => a)
+        followers,
+        following
     }
 }
 
-const fetchFromRelay = async (filters: any[]) => {
+const fetchFromRelay = async (filters: any[]): Promise<NostrEvent> => {
     return new Promise(async (resolve, reject) => {
         const relay = await Relay.connect(RELAY)
         console.log(`connected to ${relay.url}`)
