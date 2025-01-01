@@ -290,12 +290,16 @@ export const GetNoteReplies = async (noteId: string) => {
 }
 
 const getNprofile = async (npub: string) => {
-    const config = fetchFromRelay([{
+    const config = await fetchFromRelay([{
         kinds: [3],
         authors: [nip19.decode(npub).data as string]
     }])
-    // @ts-ignore
-    const relays = config.tags.map((tag) => tag[0] === "r" && tag[1]).filter(a => a) || [RELAY]
+   
+    let relays = [RELAY]
+    if (config) {
+         // @ts-ignore
+        relays = config.tags.map((tag) => tag[0] === "r" && tag[1]).filter(a => a)
+    }
     return nip19.nprofileEncode({ pubkey: nip19.decode(npub).data as string, relays })
 }
 
@@ -303,7 +307,7 @@ export const GetNpubProfileMetadata = async (npub: string) => {
     return JSON.parse((await fetchFromRelay([{
         kinds: [0],
         authors: [nip19.decode(npub).data as string]
-    }]) as any).content)
+    }]) as any)?.content)
 }
 
 export const GetNote = async (noteId: string) => {
@@ -313,7 +317,7 @@ export const GetNote = async (noteId: string) => {
 }
 
 const getFollowing = async (npub: string) => {
-    const following = fetchFromRelay([{
+    const following = await fetchFromRelay([{
         kinds: [3],
         authors: [nip19.decode(npub).data as string]
     }])
@@ -322,7 +326,7 @@ const getFollowing = async (npub: string) => {
 }   
 
 const getFollowers = async (npub: string) => {
-    const followers = fetchAllFromRelay([{
+    const followers = await fetchAllFromRelay([{
         kinds: [3],
         "#p": [nip19.decode(npub).data as string]
     }])
@@ -332,7 +336,7 @@ const getFollowers = async (npub: string) => {
 
 export const GetNpubProfile = async (npub: string) => {
     const nprofile = await getNprofile(npub)
-    const metadata = await getNpubProfileMetadata(npub)
+    const metadata = await GetNpubProfileMetadata(npub)
     const following = await getFollowing(npub)
     const followers = await getFollowers(npub)
     
@@ -344,7 +348,7 @@ export const GetNpubProfile = async (npub: string) => {
     }
 }
 
-const fetchFromRelay = async (filters: any[]): Promise<NostrEvent> => {
+const fetchFromRelay = async (filters: any[]): Promise<NostrEvent|null> => {
     return new Promise(async (resolve, reject) => {
         const relay = await Relay.connect(RELAY)
         console.log(`connected to ${relay.url}`)
