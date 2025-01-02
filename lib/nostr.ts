@@ -316,7 +316,7 @@ export const GetNote = async (noteId: string) => {
     }])) as NostrEvent & {kind: 1}
 }
 
-const getFollowing = async (npub: string) => {
+const getFollowing = async (npub: string): Promise<string[]> => {
     const following = await fetchFromRelay([{
         kinds: [3],
         authors: [nip19.decode(npub).data as string]
