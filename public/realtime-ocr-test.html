@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>On-Device OCR to Speech</title>
+</head>
+
+<body>
+    <video id="camera" autoplay playsinline></video>
+    <canvas id="canvas" style="display: none;"></canvas>
+    <div id="output"></div>
+    <button onclick="pauseSpeech()">Pause</button>
+    <button onclick="resumeSpeech()">Resume</button>
+    <button onclick="stopSpeech()">Stop</button>
+
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js"></script>
+    <script>
+
+        const video = document.getElementById('camera');
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+
+        navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+            .then(stream => {
+                video.srcObject = stream;
+            });
+
+        function captureFrame() {
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            return canvas.toDataURL('image/png');
+        }
+
+        function speakText(text) {
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'en-US';
+            speechSynthesis.speak(utterance);
+        }
+
+        // Pause and resume functionality
+        function pauseSpeech() {
+            if (speechSynthesis.speaking) speechSynthesis.pause();
+        }
+
+        function resumeSpeech() {
+            if (speechSynthesis.paused) speechSynthesis.resume();
+        }
+
+        // Stop playback
+        function stopSpeech() {
+            speechSynthesis.cancel();
+        }
+
+        async function processFrame() {
+            const imageData = captureFrame();
+            const worker = await Tesseract.createWorker();
+
+            await worker.load();
+            await worker.loadLanguage('eng');
+            await worker.initialize('eng');
+
+            const { data: { text } } = await worker.recognize(imageData, {rotateAuto: true});
+            document.getElementById('output').innerText = text;
+            speakText(text);
+
+            await worker.terminate();
+        }
+
+        // Process frame every 2 seconds
+        setInterval(processFrame, 5000);
+    </script>
+</body>
+
+</html>

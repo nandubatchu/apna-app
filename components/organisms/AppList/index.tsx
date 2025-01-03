@@ -28,7 +28,8 @@ export default function AppLauncherList() {
     const [apps, setApps] = useState<any[]>([]);
     useEffect(() => {
         const init = async () => {
-            const results = (await GetNoteReplies("note187j8dxwta5zvxle446uqutxue764q79vxmtv85dw7fnujlqgdm2qm7kelc") as any[])
+            const APP_REPLIES_NOTE = "note187j8dxwta5zvxle446uqutxue764q79vxmtv85dw7fnujlqgdm2qm7kelc"
+            const results = await (await import("@/lib/nostrEventsCacheDB")).staleWhileRevalidate('replies', APP_REPLIES_NOTE, () => GetNoteReplies("note187j8dxwta5zvxle446uqutxue764q79vxmtv85dw7fnujlqgdm2qm7kelc")) as any[]
             const parsedResults = results.map((result) => { return { ...parseAppDetailsFromJSON(result.content), created_at: result.created_at } }).filter((n: any) => n)
             const ids = new Set(); // temp variable to keep track of accepted ids
             const uniqueResults = parsedResults.sort((a: any, b: any) => b.created_at - a.created_at).filter(({ appURL }: any) => appURL && !ids.has(appURL) && ids.add(appURL)) as any[];
