@@ -19,7 +19,7 @@ export async function GET() {
         headers: {
             'Cache-Control': 'max-age=10',
             'CDN-Cache-Control': 'max-age=60',
-            'Vercel-CDN-Cache-Control': 'max-age=60, stale-while-revalidate=300',
+            'Vercel-CDN-Cache-Control': 'max-age=60, stale-while-revalidate=120',
         },
     });
 }
