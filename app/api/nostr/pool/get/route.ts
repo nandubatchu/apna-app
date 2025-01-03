@@ -6,6 +6,7 @@ import { SimplePool } from 'nostr-tools/pool'
 // useWebSocketImplementation(WebSocket)
 
 export async function GET() {
+    await new Promise((resolve) => {setTimeout(resolve, 5000)})
     const pool = new SimplePool()
 
     let relays = ["wss://relay.damus.io/"]
