@@ -2,7 +2,7 @@
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { ChevronRight } from 'lucide-react'
-import { GetNoteReplies } from '@/lib/nostr'
+import { GetNoteLikes, GetNoteReplies } from '@/lib/nostr'
 
 
 function parseAppDetailsFromJSON(text: string) {
@@ -21,6 +21,23 @@ function parseAppDetailsFromJSON(text: string) {
     }
 }
 
+const fetchAppList = async () => {
+    const appList: any[] = []
+    const APP_REPLIES_NOTE = "note187j8dxwta5zvxle446uqutxue764q79vxmtv85dw7fnujlqgdm2qm7kelc"
+    const replyEvents = await (await import("@/lib/nostrEventsCacheDB")).staleWhileRevalidate('replies', APP_REPLIES_NOTE, () => GetNoteReplies(APP_REPLIES_NOTE)) as any[]
+    const noteIds = new Set();
+    await Promise.all(replyEvents.sort((a: any, b: any) => b.created_at - a.created_at).map((replyEvent) => { return {...parseAppDetailsFromJSON(replyEvent.content), ...replyEvent} }).filter(each=>each.appURL && each.appName).map(async (appDetail) => {
+        const likes = await (await import("@/lib/nostrEventsCacheDB")).staleWhileRevalidate('likes', appDetail.id, () => GetNoteLikes(appDetail.id)) as any[]
+        const likeCount = likes.length
+        console.log(appDetail.appName, likeCount)
+        appList.push({ ...appDetail, likeCount })
+    }))
+    appList.sort((a,b) => b.likeCount - a.likeCount)
+    console.log("applist", appList)
+    return appList
+}
+
+
 export default function AppLauncherList() {
     const router = useRouter()
     const [selectedApp, setSelectedApp] = useState<string | null>(null)
@@ -28,13 +45,7 @@ export default function AppLauncherList() {
     const [apps, setApps] = useState<any[]>([]);
     useEffect(() => {
         const init = async () => {
-            const APP_REPLIES_NOTE = "note187j8dxwta5zvxle446uqutxue764q79vxmtv85dw7fnujlqgdm2qm7kelc"
-            const results = await (await import("@/lib/nostrEventsCacheDB")).staleWhileRevalidate('replies', APP_REPLIES_NOTE, () => GetNoteReplies("note187j8dxwta5zvxle446uqutxue764q79vxmtv85dw7fnujlqgdm2qm7kelc")) as any[]
-            const parsedResults = results.map((result) => { return { ...parseAppDetailsFromJSON(result.content), created_at: result.created_at } }).filter((n: any) => n)
-            const ids = new Set(); // temp variable to keep track of accepted ids
-            const uniqueResults = parsedResults.sort((a: any, b: any) => b.created_at - a.created_at).filter(({ appURL }: any) => appURL && !ids.has(appURL) && ids.add(appURL)) as any[];
-            console.log(uniqueResults)
-            setApps(uniqueResults)
+            setApps(await fetchAppList())
         }
         init()
 
@@ -61,6 +72,7 @@ export default function AppLauncherList() {
                             <div>
                                 <h2 className="text-lg font-medium text-gray-900">{app.appName}</h2>
                                 <p className="text-sm text-gray-500">{app.appURL}</p>
+                                <p className="text-sm text-gray-500">({app.likeCount} Likes)</p>
                             </div>
                             <ChevronRight className="text-gray-400" />
                         </button>

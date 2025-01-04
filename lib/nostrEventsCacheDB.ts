@@ -14,10 +14,17 @@ async function ensureStore(storeName: string) {
   // }
 }
 
-const dbPromise = openDB('NostrEventsCacheDB', 1, {
+const dbPromise = openDB('NostrEventsCacheDB', 2, {
   upgrade(db) {
     // version 1
-    db.createObjectStore('replies');
+    if (!db.objectStoreNames.contains('replies')) {
+      db.createObjectStore('replies');
+    }
+    
+    // version 2
+    if (!db.objectStoreNames.contains('likes')) {
+      db.createObjectStore('likes');
+    }
     
     // db.createObjectStore('profiles');
     // db.createObjectStore('notes');

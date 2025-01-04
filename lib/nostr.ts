@@ -289,6 +289,13 @@ export const GetNoteReplies = async (noteId: string) => {
     }])) as (NostrEvent & {kind:1})[]
 }
 
+export const GetNoteZaps = async (noteId: string) => {
+    return (await fetchAllFromRelay([{
+        kinds: [9735],
+        "#e": [nip19.decode(noteId).data as string]
+    }])) as (NostrEvent & {kind:9735})[]
+}
+
 const getNprofile = async (npub: string) => {
     const config = await fetchFromRelay([{
         kinds: [3],
@@ -346,6 +353,14 @@ export const GetNpubProfile = async (npub: string) => {
         followers,
         following
     }
+}
+
+export const GetNoteLikes = async (noteId: string) => {
+    const noteIdRaw = noteId.includes("note1") ? nip19.decode(noteId).data as string : noteId
+    return fetchAllFromRelay([{
+        kinds: [7],
+        "#e": [noteIdRaw],
+    }])
 }
 
 const fetchFromRelay = async (filters: any[]): Promise<NostrEvent|null> => {
