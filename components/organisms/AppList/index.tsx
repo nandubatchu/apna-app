@@ -24,10 +24,12 @@ function parseAppDetailsFromJSON(text: string) {
 const fetchAppList = async () => {
     const appList: any[] = []
     const APP_REPLIES_NOTE = "note187j8dxwta5zvxle446uqutxue764q79vxmtv85dw7fnujlqgdm2qm7kelc"
-    const replyEvents = await (await import("@/lib/nostrEventsCacheDB")).staleWhileRevalidate('replies', APP_REPLIES_NOTE, () => GetNoteReplies(APP_REPLIES_NOTE)) as any[]
+    // const replyEvents = await (await import("@/lib/nostrEventsCacheDB")).staleWhileRevalidate('replies', APP_REPLIES_NOTE, () => GetNoteReplies(APP_REPLIES_NOTE)) as any[]
+    const replyEvents = await GetNoteReplies(APP_REPLIES_NOTE) as any[]
     const noteIds = new Set();
     await Promise.all(replyEvents.sort((a: any, b: any) => b.created_at - a.created_at).map((replyEvent) => { return {...parseAppDetailsFromJSON(replyEvent.content), ...replyEvent} }).filter(each=>each.appURL && each.appName).map(async (appDetail) => {
-        const likes = await (await import("@/lib/nostrEventsCacheDB")).staleWhileRevalidate('likes', appDetail.id, () => GetNoteLikes(appDetail.id)) as any[]
+        // const likes = await (await import("@/lib/nostrEventsCacheDB")).staleWhileRevalidate('likes', appDetail.id, () => GetNoteLikes(appDetail.id)) as any[]
+        const likes = await GetNoteLikes(appDetail.id)
         const likeCount = likes.length
         console.log(appDetail.appName, likeCount)
         appList.push({ ...appDetail, likeCount })
