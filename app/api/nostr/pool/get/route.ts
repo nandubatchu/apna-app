@@ -8,14 +8,15 @@ import { SimplePool } from 'nostr-tools/pool'
 export const dynamic = 'force-dynamic';
 export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams
-    const query = searchParams.get('filters')
+    const noCache = Boolean(searchParams.get('noCache'))
+    const filter = searchParams.get('filter')
 
-    if (!query) {
+    if (!filter) {
         return new Response("Bad request",{status:400})
     }
 
-    const decodedQuery = decodeURIComponent(query);
-    const queryObj = JSON.parse(decodedQuery);
+    const decodedQuery = decodeURIComponent(filter);
+    const filterObj = JSON.parse(decodedQuery);
 
     // await new Promise((resolve) => {setTimeout(resolve, 5000)})
     const pool = new SimplePool()
@@ -25,11 +26,14 @@ export async function GET(request: NextRequest) {
     // let event = await pool.get(relays, {
     //     ids: ['3fa47699cbed04c37f35aeb80e2cdccfb55078ac36d6c3d1aef267c97c086ed4'],
     // })
-    let event = await pool.get(relays, queryObj)
+    let event = await pool.get(relays, filterObj)
+
+    const headers: any = {}
+    if (!noCache) {
+        headers['Cache-Control'] = 'public, s-maxage=60, stale-while-revalidate=60'
+    }
     return new Response(JSON.stringify(event), {
         status: 200,
-        headers: {
-            'Cache-Control': 'public, max-age=60, s-maxage=120, stale-while-revalidate=9'
-        },
+        headers,
     });
 }
