@@ -283,6 +283,10 @@ export const SubscribeToNotifications = async (callback: (note: any) => void, np
 }
 
 export const GetNoteReplies = async (noteId: string) => {
+    return fetchAllFromAPI({
+        kinds: [1],
+        "#e": [nip19.decode(noteId).data as string]
+    })
     return (await fetchAllFromRelay([{
         kinds: [1],
         "#e": [nip19.decode(noteId).data as string]
@@ -357,6 +361,10 @@ export const GetNpubProfile = async (npub: string) => {
 
 export const GetNoteLikes = async (noteId: string) => {
     const noteIdRaw = noteId.includes("note1") ? nip19.decode(noteId).data as string : noteId
+    return fetchAllFromAPI({
+        kinds: [7],
+        "#e": [noteIdRaw],
+    })
     return fetchAllFromRelay([{
         kinds: [7],
         "#e": [noteIdRaw],
@@ -394,6 +402,14 @@ const fetchAllFromRelay = async (filters: any[]) => {
         })
         setTimeout(() => resolve(null), 10000)
     })
+}
+
+const fetchFromAPI = async (filter: any) => {
+    return fetch(`/api/nostr/pool/get?isSingleEvent=1&filter=${encodeURIComponent(JSON.stringify(filter))}`).then(res=>res.json())
+}
+
+const fetchAllFromAPI = async (filter: any) => {
+    return fetch(`/api/nostr/pool/get?filter=${encodeURIComponent(JSON.stringify(filter))}`).then(res=>res.json())
 }
 
 export const Test = async () => {

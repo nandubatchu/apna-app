@@ -19,7 +19,6 @@ export async function GET(request: NextRequest) {
     const decodedQuery = decodeURIComponent(filter);
     const filterObj = JSON.parse(decodedQuery);
 
-    // await new Promise((resolve) => {setTimeout(resolve, 5000)})
     const pool = new SimplePool()
 
     let relays = ["wss://relay.damus.io/"]
