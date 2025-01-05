@@ -10,27 +10,22 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams
     const noCache = Boolean(searchParams.get('noCache'))
     const isSingleEvent = Boolean(searchParams.get('isSingleEvent'))
-    const filter = searchParams.get('filter')
+    const query = searchParams.get('query')
 
-    if (!filter) {
+    if (!query) {
         return new Response("Bad request",{status:400})
     }
 
-    const decodedQuery = decodeURIComponent(filter);
-    const filterObj = JSON.parse(decodedQuery);
+    const decodedQuery = decodeURIComponent(query);
+    const { relays, filter } = JSON.parse(decodedQuery)
 
     const pool = new SimplePool()
 
-    let relays = ["wss://relay.damus.io/"]
-
-    // let event = await pool.get(relays, {
-    //     ids: ['3fa47699cbed04c37f35aeb80e2cdccfb55078ac36d6c3d1aef267c97c086ed4'],
-    // })
     let result
     if (isSingleEvent) {
-        result = await pool.get(relays, filterObj)
+        result = await pool.get(relays, filter)
     } else {
-        result = await pool.querySync(relays, filterObj)
+        result = await pool.querySync(relays, filter)
     }
 
     const headers: any = {}

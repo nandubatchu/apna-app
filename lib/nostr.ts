@@ -404,12 +404,11 @@ const fetchAllFromRelay = async (filters: any[]) => {
     })
 }
 
-const fetchFromAPI = async (filter: any) => {
-    return fetch(`/api/nostr/pool/get?isSingleEvent=1&filter=${encodeURIComponent(JSON.stringify(filter))}`).then(res=>res.json())
-}
-
 const fetchAllFromAPI = async (filter: any) => {
-    return fetch(`/api/nostr/pool/get?filter=${encodeURIComponent(JSON.stringify(filter))}`).then(res=>res.json())
+    return fetch(`/api/nostr/pool/get?query=${encodeURIComponent(JSON.stringify({
+        relays: [RELAY],
+        filter
+    }))}`).then(res=>res.json())
 }
 
 export const Test = async () => {
