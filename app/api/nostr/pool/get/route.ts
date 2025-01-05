@@ -7,19 +7,19 @@ import { SimplePool } from 'nostr-tools/pool'
 
 export async function GET() {
     await new Promise((resolve) => {setTimeout(resolve, 5000)})
-    const pool = new SimplePool()
+    // const pool = new SimplePool()
 
-    let relays = ["wss://relay.damus.io/"]
+    // let relays = ["wss://relay.damus.io/"]
 
-    let event = await pool.get(relays, {
-        ids: ['3fa47699cbed04c37f35aeb80e2cdccfb55078ac36d6c3d1aef267c97c086ed4'],
-    })
-    return new Response(JSON.stringify(event), {
+    // let event = await pool.get(relays, {
+    //     ids: ['3fa47699cbed04c37f35aeb80e2cdccfb55078ac36d6c3d1aef267c97c086ed4'],
+    // })
+    return new Response((new Date).toLocaleString(), {
         status: 200,
         headers: {
-            'Cache-Control': 'max-age=10',
-            'CDN-Cache-Control': 'max-age=60',
-            'Vercel-CDN-Cache-Control': 'max-age=60, stale-while-revalidate=120',
+            'Cache-Control': 'max-age=2',
+            'CDN-Cache-Control': 'max-age=5',
+            'Vercel-CDN-Cache-Control': 'max-age=5, stale-while-revalidate=120',
         },
     });
 }
