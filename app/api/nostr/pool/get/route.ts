@@ -17,7 +17,7 @@ export async function GET() {
     return new Response((new Date).toLocaleString(), {
         status: 200,
         headers: {
-            'Cache-Control': 'max-age=2, s-max-age=4, stale-while-revalidate=2'
+            'Cache-Control': 'max-age=10, s-max-age=20, stale-while-revalidate=10'
         },
     });
 }
