@@ -5,7 +5,7 @@ import { SimplePool } from 'nostr-tools/pool'
 // import WebSocket from 'ws'
 // useWebSocketImplementation(WebSocket)
 export const dynamic = 'force-dynamic';
-export async function GET() {
+export async function POST() {
     // await new Promise((resolve) => {setTimeout(resolve, 5000)})
     const pool = new SimplePool()
 
@@ -17,7 +17,7 @@ export async function GET() {
     return new Response((new Date).toLocaleString(), {
         status: 200,
         headers: {
-            'Cache-Control': 'max-age=60, s-maxage=120, stale-while-revalidate=9'
+            'Cache-Control': 'public, max-age=60, s-maxage=120, stale-while-revalidate=9'
         },
     });
 }
