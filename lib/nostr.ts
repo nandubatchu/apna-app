@@ -321,7 +321,7 @@ export const GetNpubProfileMetadata = async (npub: string) => {
         kinds: [0],
         authors: [pubkey]
     })
-    return JSON.parse(metadataContent.content || {})
+    return JSON.parse(metadataContent[0].content || {})
     return JSON.parse((await fetchFromRelay([{
         kinds: [0],
         authors: [pubkey]
