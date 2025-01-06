@@ -1,6 +1,6 @@
 "use client";
 
-import { FollowNpub, UnfollowNpub, PublishNote, UpdateProfile, SubscribeToFeed, SubscribeToNotifications, RepostNote, LikeNote, ReplyToNote, GetNpubProfile, GetNpubProfileMetadata, GetNote, GetNoteReplies } from "@/lib/nostr";
+import { FollowNpub, UnfollowNpub, PublishNote, UpdateProfile, SubscribeToFeed, SubscribeToNotifications, RepostNote, ReactToNote, ReplyToNote, GetNpubProfile, GetNpubProfileMetadata, GetNote, GetNoteReplies } from "@/lib/nostr";
 import { getKeyPairFromLocalStorage } from "@/lib/utils";
 import { useEffect, useState, useCallback } from "react";
 import { usePathname, useSearchParams, useRouter } from "next/navigation";
@@ -51,7 +51,7 @@ const methodHandlers: IHostMethodHandlers = {
     },
     likeNote(noteId) {
       const existingKeyPair = getKeyPairFromLocalStorage();
-      return LikeNote(noteId, existingKeyPair!.nsec);
+      return ReactToNote(noteId, existingKeyPair!.nsec);
     },
     replyToNote(noteId, content) {
       const existingKeyPair = getKeyPairFromLocalStorage();

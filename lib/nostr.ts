@@ -118,12 +118,12 @@ const publishKind6 = async (nsec: string, content: string, tags: any[]) => {
     return (await publishEvent(nsec, event)) as VerifiedEvent & { kind: 6 }
 }
 
-const publishKind7 = async (nsec: string, tags: any[]) => {
+const publishKind7 = async (nsec: string, tags: any[], content: string = "+") => {
     const event = {
         kind: 7,
         created_at: Math.floor(Date.now() / 1000),
         tags,
-        content: "+",
+        content,
     }
     return (await publishEvent(nsec, event)) as VerifiedEvent & { kind: 7 }
 }
@@ -205,15 +205,16 @@ export const RepostNote = async (noteId: string, quoteContent: string, nsec: str
     
 }
 
-export const LikeNote = async (noteId: string, nsec: string) => {
+export const ReactToNote = async (noteId: string, nsec: string, content: string = "+") => {
+    const noteIdRaw = noteId.includes("note1") ? nip19.decode(noteId).data as string : noteId
     const note: any = await fetchFromRelay([{
-        ids: [nip19.decode(noteId).data as string]
+        ids: [noteIdRaw]
     }])
     const tags = [
         ['e', note.id],
         ['p', note.pubkey],
     ]
-    return publishKind7(nsec, tags)
+    return publishKind7(nsec, tags, content)
 }
 
 export const ReplyToNote = async (noteId: string, content: string, nsec: string) => {
@@ -359,7 +360,7 @@ export const GetNpubProfile = async (npub: string) => {
     }
 }
 
-export const GetNoteLikes = async (noteId: string) => {
+export const GetNoteReactions = async (noteId: string) => {
     const noteIdRaw = noteId.includes("note1") ? nip19.decode(noteId).data as string : noteId
     return fetchAllFromAPI({
         kinds: [7],
