@@ -316,10 +316,16 @@ const getNprofile = async (npub: string) => {
 }
 
 export const GetNpubProfileMetadata = async (npub: string) => {
+    const pubkey = npub.includes("npub") ? nip19.decode(npub).data as string : npub
+    const metadataContent = await fetchAllFromAPI({
+        kinds: [0],
+        authors: [pubkey]
+    })
+    return JSON.parse(metadataContent || {})
     return JSON.parse((await fetchFromRelay([{
         kinds: [0],
-        authors: [nip19.decode(npub).data as string]
-    }]) as any)?.content)
+        authors: [pubkey]
+    }]) as any)?.content || {})
 }
 
 export const GetNote = async (noteId: string) => {
