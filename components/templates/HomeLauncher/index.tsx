@@ -3,6 +3,7 @@ import SubmitApp from "@/components/organisms/SubmitApp";
 import { useEffect } from "react";
 import { getKeyPairFromLocalStorage, saveKeyPairToLocalStorage, getProfileFromLocalStorage, saveProfileToLocalStorage } from "@/lib/utils";
 import { GenerateKeyPair, InitialiseProfile } from "@/lib/nostr";
+import ImportNsecApp from "@/components/organisms/ImportNsec";
 
 
 const initialiseKeyPair = () => {
@@ -40,7 +41,10 @@ export default function HomeLauncherComponent() {
     return (
         <div className="min-h-screen bg-gray-100 p-8 justify-center">
             <h1 className="text-3xl font-bold mb-8 text-center">Apna Apps</h1>
+            <div className="mx-auto text-center">
             <SubmitApp></SubmitApp>
+            <ImportNsecApp></ImportNsecApp>
+            </div>
             <br></br>
             <AppList></AppList>
         </div>
