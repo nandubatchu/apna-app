@@ -1,5 +1,3 @@
-"use server"
-
 import { getPublicKey, VerifiedEvent, Event as NostrEvent } from 'nostr-tools/pure'
 import * as nip19 from 'nostr-tools/nip19'
 import { Relay } from 'nostr-tools/relay'
@@ -415,14 +413,17 @@ const fetchAllFromRelay = async (filters: any[]) => {
 }
 
 const fetchAllFromAPI = async (filter: any, revalidate=false) => {
+    let url = `/api/nostr/pool/get?`
     if (revalidate) {
-        revalidateTag('testtag')
-        console.log('revalidated tag testtag')
+        url = `${url}noCache=1&`
+        // revalidateTag('testtag')
+        // console.log('revalidated tag testtag')
     }
-    return fetch(`https://apna-host.vercel.app/api/nostr/pool/get?query=${encodeURIComponent(JSON.stringify({
+    url = `${url}query=${encodeURIComponent(JSON.stringify({
         relays: [RELAY],
         filter
-    }))}`, {next: { tags: ['testtag']}}).then(res=>res.json())
+    }))}`
+    return fetch(url).then(res=>res.json())
 }
 
 export const Test = async () => {
