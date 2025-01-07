@@ -17,25 +17,28 @@ function generateSHA256Digest(message: string) {
   return hash.digest('hex');
 }
 
-
 const fetchFromRelay = async (relays: string[], filter: any, isSingleEvent: boolean) => {
-    return unstable_cache(
-        async (relays, filter, isSingleEvent: boolean) => {
-            const pool = new SimplePool()
+    const pool = new SimplePool()
     
-            let result
-            if (isSingleEvent) {
-                result = await pool.get(relays, filter)
-            } else {
-                result = await pool.querySync(relays, filter)
-            }
-            return result
-        },
-        [relays, filter, isSingleEvent],
+    let result
+    if (isSingleEvent) {
+        result = await pool.get(relays, filter)
+    } else {
+        result = await pool.querySync(relays, filter)
+    }
+    return result
+}
+
+const fetchFromRelayCached = async (relays: string[], filter: any, isSingleEvent: boolean) => {
+    const tag = generateSHA256Digest(`${relays}:${filter}:${isSingleEvent}`)
+    const result = unstable_cache(
+        async () => fetchFromRelay(relays, filter, isSingleEvent),
+        [tag],
         {
-            tags: [generateSHA256Digest(`${relays}:${filter}:${isSingleEvent}`)]
+            tags: [tag]
         }
     )
+    return await result()
 }
 export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams
@@ -53,7 +56,8 @@ export async function GET(request: NextRequest) {
     if (noCache) {
         revalidateTag(generateSHA256Digest(`${relays}:${filter}:${isSingleEvent}`))
     }
-    const result = await fetchFromRelay(relays, filter, isSingleEvent)
+    const result = await fetchFromRelayCached(relays, filter, isSingleEvent)
+    console.log(generateSHA256Digest(`${relays}:${filter}:${isSingleEvent}`), filter)
 
     const headers: any = {}
     if (!noCache) {
