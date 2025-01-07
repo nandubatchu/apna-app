@@ -25,7 +25,7 @@ function parseAppDetailsFromJSON(text: string) {
     }
 }
 
-const fetchAppList = async () => {
+const fetchAppList = async (revalidate=false) => {
     const appList: any[] = []
     const APP_REPLIES_NOTE = "note187j8dxwta5zvxle446uqutxue764q79vxmtv85dw7fnujlqgdm2qm7kelc"
     // const replyEvents = await (await import("@/lib/nostrEventsCacheDB")).staleWhileRevalidate('replies', APP_REPLIES_NOTE, () => GetNoteReplies(APP_REPLIES_NOTE)) as any[]
@@ -34,7 +34,7 @@ const fetchAppList = async () => {
     await Promise.all(replyEvents.sort((a: any, b: any) => b.created_at - a.created_at).map((replyEvent) => { return { ...parseAppDetailsFromJSON(replyEvent.content), ...replyEvent } }).filter(each => each.appURL && each.appName).map(async (appDetail) => {
         // const likes = await (await import("@/lib/nostrEventsCacheDB")).staleWhileRevalidate('likes', appDetail.id, () => GetNoteLikes(appDetail.id)) as any[]
         const authorProfileMetadata = await GetNpubProfileMetadata(appDetail.pubkey)
-        const reactions = await GetNoteReactions(appDetail.id)
+        const reactions = await GetNoteReactions(appDetail.id, revalidate)
         const upVotes = reactions.filter((reaction: any) => reaction.content === "+")
         const downVotes = reactions.filter((reaction: any) => reaction.content === "-")
         console.log(appDetail, authorProfileMetadata)
@@ -59,8 +59,8 @@ export default function AppLauncherList() {
 
     const [apps, setApps] = useState<any[]>([]);
 
-    const fetchAndSetAppList = async () => {
-        setApps(await fetchAppList())
+    const fetchAndSetAppList = async (revalidate=false) => {
+        setApps(await fetchAppList(revalidate))
     }
     useEffect(() => {
         const init = async () => {
@@ -110,7 +110,7 @@ export default function AppLauncherList() {
                                             console.log(app.id, 'up');
                                             const existingKeyPair = getKeyPairFromLocalStorage();
                                             if (!app.upVotes.map((e: any) => e.pubkey).includes(nip19.decode(getKeyPairFromLocalStorage()!.npub).data)) {
-                                                ReactToNote(app.id, existingKeyPair!.nsec, "+").then(() => fetchAndSetAppList())
+                                                ReactToNote(app.id, existingKeyPair!.nsec, "+").then(() => fetchAndSetAppList(true))
                                             }
                                         }}
                                     >
@@ -131,7 +131,7 @@ export default function AppLauncherList() {
                                             console.log(app.id, 'down');
                                             const existingKeyPair = getKeyPairFromLocalStorage();
                                             if (!app.downVotes.map((e: any) => e.pubkey).includes(nip19.decode(getKeyPairFromLocalStorage()!.npub).data)) {
-                                                ReactToNote(app.id, existingKeyPair!.nsec, "-").then(() => fetchAndSetAppList())
+                                                ReactToNote(app.id, existingKeyPair!.nsec, "-").then(() => fetchAndSetAppList(true))
                                             }
                                         }}
                                     >

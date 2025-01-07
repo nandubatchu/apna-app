@@ -4,6 +4,7 @@ import { Relay } from 'nostr-tools/relay'
 import { setNostrWasm, generateSecretKey, finalizeEvent, verifyEvent } from 'nostr-tools/wasm'
 import { initNostrWasm } from 'nostr-wasm'
 import * as crypto from 'crypto'
+import { revalidateTag } from 'next/cache'
 
 // const RELAY = "wss://relay.snort.social/"
 const RELAY = "wss://relay.damus.io/"
@@ -366,12 +367,12 @@ export const GetNpubProfile = async (npub: string) => {
     }
 }
 
-export const GetNoteReactions = async (noteId: string) => {
+export const GetNoteReactions = async (noteId: string, revalidate: boolean=false) => {
     const noteIdRaw = noteId.includes("note1") ? nip19.decode(noteId).data as string : noteId
     return fetchAllFromAPI({
         kinds: [7],
         "#e": [noteIdRaw],
-    })
+    }, revalidate)
     return fetchAllFromRelay([{
         kinds: [7],
         "#e": [noteIdRaw],
@@ -411,11 +412,15 @@ const fetchAllFromRelay = async (filters: any[]) => {
     })
 }
 
-const fetchAllFromAPI = async (filter: any) => {
+const fetchAllFromAPI = async (filter: any, revalidate=false) => {
+    if (revalidate) {
+        revalidateTag('testtag')
+        console.log('revalidated tag testtag')
+    }
     return fetch(`/api/nostr/pool/get?query=${encodeURIComponent(JSON.stringify({
         relays: [RELAY],
         filter
-    }))}`).then(res=>res.json())
+    }))}`, {next: { tags: ['testtag']}}).then(res=>res.json())
 }
 
 export const Test = async () => {
