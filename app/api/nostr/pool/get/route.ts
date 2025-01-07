@@ -35,6 +35,7 @@ const fetchFromRelayCached = async (relays: string[], filter: any, isSingleEvent
         async () => fetchFromRelay(relays, filter, isSingleEvent),
         [tag],
         {
+            revalidate: 60,
             tags: [tag]
         }
     )
