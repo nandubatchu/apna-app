@@ -413,6 +413,7 @@ const fetchAllFromRelay = async (filters: any[]) => {
 }
 
 const fetchAllFromAPI = async (filter: any, revalidate=false) => {
+    "use server"
     if (revalidate) {
         revalidateTag('testtag')
         console.log('revalidated tag testtag')
