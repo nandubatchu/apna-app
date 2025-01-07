@@ -30,7 +30,7 @@ const fetchFromRelay = async (relays: string[], filter: any, isSingleEvent: bool
 }
 
 const fetchFromRelayCached = async (relays: string[], filter: any, isSingleEvent: boolean) => {
-    const tag = generateSHA256Digest(`${relays}:${filter}:${isSingleEvent}`)
+    const tag = generateSHA256Digest(`${JSON.stringify(relays)}:${JSON.stringify(filter)}:${isSingleEvent}`)
     const result = unstable_cache(
         async () => fetchFromRelay(relays, filter, isSingleEvent),
         [tag],
@@ -54,10 +54,10 @@ export async function GET(request: NextRequest) {
     const { relays, filter } = JSON.parse(decodedQuery)
 
     if (noCache) {
-        revalidateTag(generateSHA256Digest(`${relays}:${filter}:${isSingleEvent}`))
+        revalidateTag(generateSHA256Digest(`${JSON.stringify(relays)}:${JSON.stringify(filter)}:${isSingleEvent}`))
     }
     const result = await fetchFromRelayCached(relays, filter, isSingleEvent)
-    console.log(generateSHA256Digest(`${relays}:${filter}:${isSingleEvent}`), filter)
+    console.log(generateSHA256Digest(`${JSON.stringify(relays)}:${JSON.stringify(filter)}:${isSingleEvent}`), filter)
 
     const headers: any = {}
     if (!noCache) {
