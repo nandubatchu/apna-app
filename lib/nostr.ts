@@ -419,7 +419,7 @@ const fetchAllFromAPI = async (filter: any, revalidate=false) => {
         revalidateTag('testtag')
         console.log('revalidated tag testtag')
     }
-    return fetch(`/api/nostr/pool/get?query=${encodeURIComponent(JSON.stringify({
+    return fetch(`https://apna-host.vercel.app/api/nostr/pool/get?query=${encodeURIComponent(JSON.stringify({
         relays: [RELAY],
         filter
     }))}`, {next: { tags: ['testtag']}}).then(res=>res.json())
