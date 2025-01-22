@@ -56,26 +56,41 @@ export default function SubmitNewApp() {
   return (
       <Drawer open={isOpen} onOpenChange={setIsOpen}>
         <DrawerTrigger asChild>
-          <Button variant="outline">Submit New App</Button>
+          <Button variant="outline" className="bg-white hover:bg-[#e6efe9] shadow-sm hover:shadow-md transition-all duration-300 text-[#368564] hover:text-[#2a684d] border-[#368564] hover:border-[#2a684d]">
+            <span className="flex items-center gap-2">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              Submit New App
+            </span>
+          </Button>
         </DrawerTrigger>
         <DrawerContent>
-          <div className="mx-auto w-full max-w-sm">
-            <DrawerHeader>
-              <DrawerTitle>Submit New App</DrawerTitle>
-              <DrawerDescription>Fill out the form to submit your new app.</DrawerDescription>
+          <div className="mx-auto w-full max-w-lg">
+            <DrawerHeader className="border-b border-gray-100 pb-4 px-4 sm:px-6">
+              <DrawerTitle className="text-xl sm:text-2xl font-semibold text-[#368564]">
+                Submit New App
+              </DrawerTitle>
+              <DrawerDescription className="text-gray-600 text-sm sm:text-base">
+                Share your app with the Apna community
+              </DrawerDescription>
             </DrawerHeader>
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8 p-4">
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 p-4 sm:p-6">
                 <FormField
                   control={form.control}
                   name="appName"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>App Name</FormLabel>
+                      <FormLabel className="text-gray-700">App Name</FormLabel>
                       <FormControl>
-                        <Input placeholder="Enter app name" {...field} />
+                        <Input
+                          placeholder="Enter app name"
+                          {...field}
+                          className="border-gray-200 focus:border-[#368564] focus:ring-[#e6efe9]"
+                        />
                       </FormControl>
-                      <FormMessage />
+                      <FormMessage className="text-red-500" />
                     </FormItem>
                   )}
                 />
@@ -84,15 +99,24 @@ export default function SubmitNewApp() {
                   name="appUrl"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>App URL</FormLabel>
+                      <FormLabel className="text-gray-700">App URL</FormLabel>
                       <FormControl>
-                        <Input placeholder="https://your-app-url.com" {...field} />
+                        <Input
+                          placeholder="https://your-app-url.com"
+                          {...field}
+                          className="border-gray-200 focus:border-[#368564] focus:ring-[#e6efe9]"
+                        />
                       </FormControl>
-                      <FormMessage />
+                      <FormMessage className="text-red-500" />
                     </FormItem>
                   )}
                 />
-                <Button type="submit" className="w-full">Submit</Button>
+                <Button
+                  type="submit"
+                  className="w-full bg-[#368564] hover:bg-[#2a684d] text-white font-semibold py-2 rounded-lg transition-all duration-300 shadow-sm hover:shadow-md"
+                >
+                  Submit App
+                </Button>
               </form>
             </Form>
           </div>

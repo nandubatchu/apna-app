@@ -39,14 +39,17 @@ export default function HomeLauncherComponent() {
     })
 
     return (
-        <div className="min-h-screen bg-gray-100 p-8 justify-center">
-            <h1 className="text-3xl font-bold mb-8 text-center">Apna Apps</h1>
-            <div className="mx-auto text-center">
-            <SubmitApp></SubmitApp>
-            <ImportNsecApp></ImportNsecApp>
+        <div className="min-h-screen bg-[#f8faf9] safe-top safe-bottom">
+            <div className="max-w-6xl mx-auto px-4 pt-6 pb-16 sm:px-6 sm:pt-12 lg:px-8">
+                <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-center text-[#368564] mb-6 sm:mb-12">
+                    Apna Apps
+                </h1>
+                <div className="flex flex-col sm:flex-row justify-center gap-3 sm:gap-4 mb-8 sm:mb-12">
+                    <SubmitApp />
+                    <ImportNsecApp />
+                </div>
+                <AppList />
             </div>
-            <br></br>
-            <AppList></AppList>
         </div>
 
     )
