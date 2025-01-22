@@ -1,6 +1,6 @@
 import { Plus } from "lucide-react";
 
-import { Button } from "@/components/atoms/Button";
+import { Button } from "@/components/ui/button";
 
 import * as nostr from "@/lib/nostr";
 import { cn, getKeyPairFromLocalStorage } from "@/lib/utils";
