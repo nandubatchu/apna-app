@@ -1,42 +1,26 @@
 import AppList from "@/components/organisms/AppList";
 import SubmitApp from "@/components/organisms/SubmitApp";
-import { useEffect } from "react";
-import { getKeyPairFromLocalStorage, saveKeyPairToLocalStorage, getProfileFromLocalStorage, saveProfileToLocalStorage } from "@/lib/utils";
-import { GenerateKeyPair, InitialiseProfile } from "@/lib/nostr";
 import ImportNsecApp from "@/components/organisms/ImportNsec";
-
-
-const initialiseKeyPair = () => {
-    // find the keys in local storage
-    const existingKeyPair = getKeyPairFromLocalStorage();
-    // if not found generate and set to local storage
-    if (!existingKeyPair) {
-        const { nsec, npub } = GenerateKeyPair();
-        saveKeyPairToLocalStorage(npub, nsec);
-    }
-};
-
-const initialiseProfile = async () => {
-    // find the keys in local storage
-    const existingProfile = getProfileFromLocalStorage();
-    // if not found publish and set to local storage
-    if (!existingProfile) {
-        initialiseKeyPair();
-        const existingKeyPair = getKeyPairFromLocalStorage();
-        const profile = await InitialiseProfile(existingKeyPair!.nsec);
-        saveProfileToLocalStorage(profile);
-    }
-}
+import { useProfile } from "@/lib/hooks/useProfile";
 
 export default function HomeLauncherComponent() {
-    useEffect(() => {
-        const init = async () => {
-            await initialiseProfile();
-            console.log('initialised')
-        }
-        init()
+    const { loading, error } = useProfile();
 
-    })
+    if (loading) {
+        return (
+            <div className="min-h-screen bg-[#f8faf9] flex items-center justify-center">
+                <p className="text-gray-600">Initializing profile...</p>
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <div className="min-h-screen bg-[#f8faf9] flex items-center justify-center">
+                <p className="text-red-600">Failed to initialize profile: {error}</p>
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen bg-[#f8faf9] safe-top safe-bottom">
@@ -51,6 +35,5 @@ export default function HomeLauncherComponent() {
                 <AppList />
             </div>
         </div>
-
-    )
+    );
 }
