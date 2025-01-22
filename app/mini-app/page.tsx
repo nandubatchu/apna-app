@@ -1,5 +1,6 @@
 "use client";
 
+import TopBar from "@/components/organisms/TopBar";
 import { FollowNpub, UnfollowNpub, PublishNote, UpdateProfile, SubscribeToFeed, SubscribeToNotifications, RepostNote, ReactToNote, ReplyToNote, GetNpubProfile, GetNpubProfileMetadata, GetNote, GetNoteReplies } from "@/lib/nostr";
 import { getKeyPairFromLocalStorage } from "@/lib/utils";
 import { useEffect, useState, useCallback } from "react";
@@ -64,9 +65,6 @@ const methodHandlers: IHostMethodHandlers = {
     subscribeToUserFeed(npub, feedType, onevent, withReactions) {
       return SubscribeToFeed(npub, feedType, onevent);
     },
-    // subscribeToUserNotifications(onevent) {
-      
-    // },
   }
 }
 
@@ -76,6 +74,7 @@ export default function PageComponent() {
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const [iframeSrc, setIframeSrc] = useState<string>();
+
   useEffect(() => {
     if (typeof window !== "undefined") {
       const init = async () => {
@@ -90,11 +89,9 @@ export default function PageComponent() {
         if (searchParams.get('miniAppUrl') === null) {
           router.push(pathname + '?' + createQueryString('miniAppUrl', 1==1 ? 'https://social-mini-app.vercel.app/' : 'http://localhost:3001'))
         }
-        // setIframeSrc("http://localhost:3001")
       }
       init()
     }
-
   }, []);
 
   // Get a new searchParams string by merging the current
@@ -110,8 +107,17 @@ export default function PageComponent() {
   )
 
   return (
-    <div className="h-screen w-screen">
-      <iframe id="miniAppIframe" src={searchParams.get('miniAppUrl') || ""} style={{ overflow: "hidden", height: "100%", width: "100%" }} height="100%" width="100%"></iframe>
+    <div className="h-screen w-screen flex flex-col">
+      <TopBar appId={searchParams.get('appId') || ""} />
+      <div className="flex-1">
+        <iframe 
+          id="miniAppIframe" 
+          src={searchParams.get('miniAppUrl') || ""} 
+          style={{ overflow: "hidden", height: "100%", width: "100%" }} 
+          height="100%" 
+          width="100%"
+        />
+      </div>
     </div>
   );
 }

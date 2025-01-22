@@ -1,12 +1,21 @@
 'use client'
 import { useRouter } from 'next/navigation'
+import { GetNoteReactions, GetNoteReplies, GetNpubProfileMetadata } from '@/lib/nostr'
+import { Avatar, AvatarFallback } from '@radix-ui/react-avatar'
 import { useEffect, useState } from 'react'
-import { ThumbsUp, ThumbsDown } from 'lucide-react'
-import { GetNoteReactions, GetNoteReplies, GetNpubProfileMetadata, ReactToNote } from '@/lib/nostr'
-import { Button } from '@/components/ui/button'
-import { getKeyPairFromLocalStorage } from '@/lib/utils'
-import { nip19 } from 'nostr-tools'
-import { Avatar, AvatarImage, AvatarFallback } from '@radix-ui/react-avatar'
+import { RatingDisplay } from '@/components/molecules/RatingDisplay'
+
+interface AppDetails {
+    appURL: string;
+    appName: string;
+    id: string;
+    pubkey: string;
+    reactions: any[];
+    avgRating: string;
+    authorMetadata: {
+        name?: string;
+    };
+}
 
 function parseAppDetailsFromJSON(text: string) {
     try {
@@ -21,48 +30,88 @@ function parseAppDetailsFromJSON(text: string) {
     }
 }
 
-const fetchAppList = async (revalidate=false) => {
-    const appList: any[] = []
+const fetchAppList = async (revalidate = false) => {
+    const appList: AppDetails[] = [];
     const APP_REPLIES_NOTE = "note187j8dxwta5zvxle446uqutxue764q79vxmtv85dw7fnujlqgdm2qm7kelc"
-    const replyEvents = await GetNoteReplies(APP_REPLIES_NOTE) as any[]
-    const noteIds = new Set();
-    await Promise.all(replyEvents.sort((a: any, b: any) => b.created_at - a.created_at).map((replyEvent) => { return { ...parseAppDetailsFromJSON(replyEvent.content), ...replyEvent } }).filter(each => each.appURL && each.appName).map(async (appDetail) => {
-        const authorProfileMetadata = await GetNpubProfileMetadata(appDetail.pubkey)
-        const reactions = await GetNoteReactions(appDetail.id, revalidate)
-        const upVotes = reactions.filter((reaction: any) => reaction.content === "+")
-        const downVotes = reactions.filter((reaction: any) => reaction.content === "-")
-        console.log(appDetail, authorProfileMetadata)
-        appList.push({ ...appDetail, upVotes, downVotes, authorMetadata: authorProfileMetadata||{} })
-    }))
-    appList.sort((a, b) => {
-        if (b.upVotes.length !== a.upVotes.length) {
-            return b.upVotes.length - a.upVotes.length;
-        }
-        return a.downVotes.length - b.downVotes.length;
-    })
-    console.log("applist", appList)
-    return appList
+    const replyEvents = await GetNoteReplies(APP_REPLIES_NOTE) as any[];
+    const authorMetadataCache: Record<string, any> = {};
+
+    const processedEvents = replyEvents
+        .sort((a: any, b: any) => b.created_at - a.created_at)
+        .map((replyEvent) => {
+            const appDetails = parseAppDetailsFromJSON(replyEvent.content);
+            return appDetails ? { ...appDetails, ...replyEvent } : null;
+        })
+        .filter((each): each is AppDetails & { pubkey: string; id: string } => 
+            each !== null && each.appURL && each.appName
+        );
+
+    // First, gather all pubkeys
+    const allPubkeys = new Set<string>();
+    processedEvents.forEach(event => {
+        allPubkeys.add(event.pubkey);
+    });
+
+    // Fetch author metadata
+    await Promise.all(
+        Array.from(allPubkeys).map(async (pubkey) => {
+            authorMetadataCache[pubkey] = await GetNpubProfileMetadata(pubkey);
+        })
+    );
+
+    // Process apps and their reactions
+    for (const appDetail of processedEvents) {
+        const reactions = await GetNoteReactions(appDetail.id, revalidate);
+        // Calculate average rating
+        let totalRating = 0;
+        let count = 0;
+        reactions.forEach((reaction: { content: string }) => {
+            try {
+                const data = JSON.parse(reaction.content);
+                if (data && typeof data.rating === 'number') {
+                    totalRating += data.rating;
+                    count++;
+                }
+            } catch (e) {
+                if (reaction.content === '+') {
+                    totalRating += 5;
+                    count++;
+                } else if (reaction.content === '-') {
+                    totalRating += 1;
+                    count++;
+                }
+            }
+        });
+        const avgRating = count > 0 ? (totalRating / count).toFixed(1) : '0.0';
+        
+        appList.push({
+            ...appDetail,
+            reactions,
+            avgRating,
+            authorMetadata: authorMetadataCache[appDetail.pubkey] || {}
+        });
+    }
+
+    appList.sort((a, b) => parseFloat(b.avgRating) - parseFloat(a.avgRating));
+    return appList;
 }
 
 export default function AppLauncherList() {
     const router = useRouter()
     const [selectedApp, setSelectedApp] = useState<string | null>(null)
-    const [apps, setApps] = useState<any[]>([]);
+    const [apps, setApps] = useState<AppDetails[]>([]);
 
-    const fetchAndSetAppList = async (revalidate=false) => {
+    const fetchAndSetAppList = async (revalidate = false) => {
         setApps(await fetchAppList(revalidate))
     }
-    
+
     useEffect(() => {
-        const init = async () => {
-            await fetchAndSetAppList()
-        }
-        init()
+        fetchAndSetAppList()
     }, [])
 
-    const launchApp = (appURL: string) => {
+    const launchApp = (appURL: string, appId: string) => {
         setSelectedApp(appURL)
-        router.push(`/mini-app?miniAppUrl=${appURL}`)
+        router.push(`/mini-app?miniAppUrl=${appURL}&appId=${appId}`)
     }
 
     return (
@@ -74,7 +123,7 @@ export default function AppLauncherList() {
                             className={`w-full text-left ${
                                 selectedApp === app.appName ? 'ring-2 ring-[#368564] ring-opacity-50' : ''
                             }`}
-                            onClick={() => launchApp(app.appURL)}
+                            onClick={() => launchApp(app.appURL, app.id)}
                         >
                             <div className="p-4 sm:p-6">
                                 <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 sm:gap-6">
@@ -82,7 +131,9 @@ export default function AppLauncherList() {
                                         <h2 className="text-lg sm:text-xl font-semibold text-gray-900 group-hover:text-[#368564] transition-colors truncate">
                                             {app.appName}
                                         </h2>
-                                        <p className="mt-2 text-sm text-gray-500 break-all line-clamp-2 sm:line-clamp-1">{app.appURL}</p>
+                                        <p className="mt-2 text-sm text-gray-500 break-all line-clamp-2 sm:line-clamp-1">
+                                            {app.appURL}
+                                        </p>
                                         <div className="mt-3 flex items-center">
                                             <Avatar className="h-7 w-7 sm:h-6 sm:w-6 rounded-full bg-[#e6efe9]">
                                                 <AvatarFallback className="text-[#368564]">
@@ -94,50 +145,7 @@ export default function AppLauncherList() {
                                             </p>
                                         </div>
                                     </div>
-                                    <div className="flex items-center sm:items-start space-x-6 sm:space-x-4">
-                                        <div className="flex flex-col items-center">
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                className="p-2 sm:p-1 hover:bg-[#e6efe9] transition-colors touch-action-manipulation"
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    const existingKeyPair = getKeyPairFromLocalStorage();
-                                                    if (!app.upVotes.map((e: any) => e.pubkey).includes(nip19.decode(getKeyPairFromLocalStorage()!.npub).data)) {
-                                                        ReactToNote(app.id, existingKeyPair!.nsec, "+").then(() => fetchAndSetAppList(true))
-                                                    }
-                                                }}
-                                            >
-                                                <ThumbsUp
-                                                    fill={app.upVotes.map((e: any) => e.pubkey).includes(nip19.decode(getKeyPairFromLocalStorage()!.npub).data) ? "#368564" : "none"}
-                                                    strokeWidth={app.upVotes.map((e: any) => e.pubkey).includes(nip19.decode(getKeyPairFromLocalStorage()!.npub).data) ? 0 : 2}
-                                                    className="w-6 h-6 sm:w-5 sm:h-5 text-[#368564]"
-                                                />
-                                            </Button>
-                                            <span className="text-base sm:text-sm font-medium text-gray-600">{app.upVotes.length || 0}</span>
-                                        </div>
-                                        <div className="flex flex-col items-center">
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                className="p-2 sm:p-1 hover:bg-[#e6efe9] transition-colors touch-action-manipulation"
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    const existingKeyPair = getKeyPairFromLocalStorage();
-                                                    if (!app.downVotes.map((e: any) => e.pubkey).includes(nip19.decode(getKeyPairFromLocalStorage()!.npub).data)) {
-                                                        ReactToNote(app.id, existingKeyPair!.nsec, "-").then(() => fetchAndSetAppList(true))
-                                                    }
-                                                }}
-                                            >
-                                                <ThumbsDown
-                                                    fill={app.downVotes.map((e: any) => e.pubkey).includes(nip19.decode(getKeyPairFromLocalStorage()!.npub).data) ? "#368564" : "none"}
-                                                    strokeWidth={app.downVotes.map((e: any) => e.pubkey).includes(nip19.decode(getKeyPairFromLocalStorage()!.npub).data) ? 0 : 2}
-                                                    className="w-6 h-6 sm:w-5 sm:h-5 text-[#368564]"
-                                                />
-                                            </Button>
-                                            <span className="text-base sm:text-sm font-medium text-gray-600">{app.downVotes.length || 0}</span>
-                                        </div>
-                                    </div>
+                                    <RatingDisplay app={app} />
                                 </div>
                             </div>
                         </button>
