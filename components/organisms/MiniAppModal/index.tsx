@@ -1,13 +1,15 @@
 "use client";
 
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import TopBar from "@/components/organisms/TopBar";
-import { FollowNpub, UnfollowNpub, PublishNote, UpdateProfile, SubscribeToFeed, SubscribeToNotifications, RepostNote, ReactToNote, ReplyToNote, GetNpubProfile, GetNpubProfileMetadata, GetNote, GetNoteReplies } from "@/lib/nostr";
-import { getKeyPairFromLocalStorage } from "@/lib/utils";
-import { useEffect, useState, useCallback } from "react";
-import { usePathname, useSearchParams, useRouter } from "next/navigation";
+import { useEffect } from "react";
 import { IHostMethodHandlers } from "@apna/sdk";
+import { FollowNpub, UnfollowNpub, PublishNote, UpdateProfile, SubscribeToFeed, 
+  SubscribeToNotifications, RepostNote, ReactToNote, ReplyToNote, GetNpubProfile, 
+  GetNpubProfileMetadata, GetNote, GetNoteReplies } from "@/lib/nostr";
+import { getKeyPairFromLocalStorage } from "@/lib/utils";
 
-// Methods
+// Method handlers from the original mini-app page
 const methodHandlers: IHostMethodHandlers = {
   nostr: {
     getActiveUserProfile() {
@@ -68,15 +70,17 @@ const methodHandlers: IHostMethodHandlers = {
   }
 }
 
-// Page
-export default function PageComponent() {
-  const router = useRouter()
-  const pathname = usePathname()
-  const searchParams = useSearchParams()
-  const [iframeSrc, setIframeSrc] = useState<string>();
+interface MiniAppModalProps {
+  isOpen: boolean;
+  appUrl: string | null;
+  appId: string;
+  appName?: string;
+  onClose: () => void;
+}
 
+export default function MiniAppModal({ isOpen, appUrl, appId, appName, onClose }: MiniAppModalProps) {
   useEffect(() => {
-    if (typeof window !== "undefined") {
+    if (typeof window !== "undefined" && isOpen) {
       const init = async () => {
         const { ApnaHost } = (await import('@apna/sdk'))
         
@@ -85,39 +89,39 @@ export default function PageComponent() {
         const apna = new ApnaHost({
           methodHandlers
         })
-        
-        if (searchParams.get('miniAppUrl') === null) {
-          router.push(pathname + '?' + createQueryString('miniAppUrl', 1==1 ? 'https://social-mini-app.vercel.app/' : 'http://localhost:3001'))
-        }
       }
       init()
     }
-  }, []);
+  }, [isOpen]);
 
-  // Get a new searchParams string by merging the current
-  // searchParams with a provided key/value pair
-  const createQueryString = useCallback(
-    (name: string, value: string) => {
-      const params = new URLSearchParams(searchParams.toString())
-      params.set(name, value)
- 
-      return params.toString()
-    },
-    [searchParams]
-  )
-
-  return (
-    <div className="h-screen w-screen flex flex-col">
-      <TopBar appId={searchParams.get('appId') || ""} />
-      <div className="flex-1">
-        <iframe 
-          id="miniAppIframe" 
-          src={searchParams.get('miniAppUrl') || ""} 
-          style={{ overflow: "hidden", height: "100%", width: "100%" }} 
-          height="100%" 
-          width="100%"
-        />
-      </div>
-    </div>
-  );
+  return isOpen ? (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent variant="fullscreen" className="p-0">
+        <div className="flex flex-col h-full">
+          <TopBar 
+            appId={appId} 
+            appName={appName}
+            onClose={onClose} 
+            showBackButton
+          />
+          <div className="flex-1">
+            {appUrl && (
+              <iframe 
+                id="miniAppIframe" 
+                src={appUrl} 
+                style={{ 
+                  overflow: "hidden", 
+                  height: "100%", 
+                  width: "100%",
+                  border: "none"
+                }} 
+                height="100%" 
+                width="100%"
+              />
+            )}
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  ) : null;
 }

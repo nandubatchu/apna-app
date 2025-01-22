@@ -1,14 +1,26 @@
 'use client'
-import { useState } from 'react'
-import { Button } from '@/components/ui/button'
-import { Star } from 'lucide-react'
-import { Textarea } from '@/components/ui/textarea'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
-import { getKeyPairFromLocalStorage } from '@/lib/utils'
-import { ReactToNote } from '@/lib/nostr'
-import { nip19 } from 'nostr-tools'
+import React, { useState, ChangeEvent } from 'react'
+import { Button } from '../../../components/ui/button'
+import { Star, ArrowLeft } from 'lucide-react'
+import {
+  Dialog,
+  DialogTrigger,
+  DialogContent,
+  DialogHeader,
+  DialogTitle
+} from '../../../components/ui/dialog'
+import { getKeyPairFromLocalStorage } from '../../../lib/utils'
+import { ReactToNote } from '../../../lib/nostr'
 
-export default function TopBar({ appId, onRate }: { appId: string, onRate?: () => void }) {
+interface TopBarProps {
+  appId: string;
+  appName?: string;
+  onRate?: () => void;
+  onClose?: () => void;
+  showBackButton?: boolean;
+}
+
+export default function TopBar({ appId, appName, onRate, onClose, showBackButton }: TopBarProps) {
   const [rating, setRating] = useState(0)
   const [hoveredRating, setHoveredRating] = useState(0)
   const [feedback, setFeedback] = useState('')
@@ -18,7 +30,6 @@ export default function TopBar({ appId, onRate }: { appId: string, onRate?: () =
     const existingKeyPair = getKeyPairFromLocalStorage()
     if (!existingKeyPair) return
 
-    // Store rating and feedback as JSON in the reaction content
     const ratingData = JSON.stringify({
       rating,
       feedback
@@ -29,8 +40,30 @@ export default function TopBar({ appId, onRate }: { appId: string, onRate?: () =
     setIsOpen(false)
   }
 
+  const handleFeedbackChange = (e: ChangeEvent<HTMLTextAreaElement>) => {
+    setFeedback(e.target.value)
+  }
+
   return (
     <div className="bg-white border-b border-gray-200 px-4 py-2 flex justify-between items-center">
+      <div className="flex items-center gap-3">
+        {showBackButton && (
+          <Button 
+            variant="ghost" 
+            size="icon"
+            className="hover:bg-[#e6efe9]"
+            onClick={onClose}
+          >
+            <ArrowLeft className="w-5 h-5 text-[#368564]" />
+          </Button>
+        )}
+        {appName && (
+          <h1 className="text-lg font-semibold text-[#368564]">
+            {appName}
+          </h1>
+        )}
+      </div>
+
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
         <DialogTrigger asChild>
           <Button variant="ghost" size="sm" className="hover:bg-[#e6efe9]">
@@ -61,11 +94,11 @@ export default function TopBar({ appId, onRate }: { appId: string, onRate?: () =
               </Button>
             ))}
           </div>
-          <Textarea
+          <textarea
             placeholder="Share your feedback about this app (optional)"
             value={feedback}
-            onChange={(e) => setFeedback(e.target.value)}
-            className="mb-4"
+            onChange={handleFeedbackChange}
+            className="w-full min-h-[100px] p-2 border rounded-md mb-4 focus:outline-none focus:ring-2 focus:ring-[#368564]"
           />
           <Button
             onClick={handleRate}
