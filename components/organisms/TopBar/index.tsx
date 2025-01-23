@@ -20,10 +20,11 @@ interface TopBarProps {
   appName?: string;
   onRate?: () => void;
   onClose?: () => void;
+  showBackButton?: boolean;
 }
 
-export default function TopBar(props: TopBarProps) {
-  const { appId, appName, onRate, onClose } = props
+export default function TopBar(props: TopBarProps = {}) {
+  const { appId, appName, onRate, onClose, showBackButton } = props
   const pathname = usePathname()
   const router = useRouter()
   const [rating, setRating] = useState(0)
@@ -126,12 +127,12 @@ export default function TopBar(props: TopBarProps) {
     )
   }
 
-  const showBackButton = pathname === '/settings' || appName
+  const displayBackButton = showBackButton || pathname === '/settings'
 
   return (
     <div className="bg-white border-b border-gray-200 px-4 py-2 flex justify-between items-center">
       <div className="flex items-center gap-3">
-        {showBackButton ? (
+        {displayBackButton ? (
           <Button 
             variant="ghost" 
             size="icon"
