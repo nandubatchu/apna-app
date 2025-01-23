@@ -1,7 +1,9 @@
 'use client'
+
 import React, { useState, ChangeEvent } from 'react'
 import { Button } from '../../../components/ui/button'
 import { Star, ArrowLeft } from 'lucide-react'
+import UserDrawer from '../UserDrawer'
 import {
   Dialog,
   DialogTrigger,
@@ -11,22 +13,50 @@ import {
 } from '../../../components/ui/dialog'
 import { getKeyPairFromLocalStorage } from '../../../lib/utils'
 import { ReactToNote } from '../../../lib/nostr'
+import { usePathname, useRouter } from 'next/navigation'
 
 interface TopBarProps {
-  appId: string;
+  appId?: string;
   appName?: string;
   onRate?: () => void;
   onClose?: () => void;
-  showBackButton?: boolean;
 }
 
-export default function TopBar({ appId, appName, onRate, onClose, showBackButton }: TopBarProps) {
+export default function TopBar(props: TopBarProps) {
+  const { appId, appName, onRate, onClose } = props
+  const pathname = usePathname()
+  const router = useRouter()
   const [rating, setRating] = useState(0)
   const [hoveredRating, setHoveredRating] = useState(0)
   const [feedback, setFeedback] = useState('')
   const [isOpen, setIsOpen] = useState(false)
 
+  const getPageTitle = () => {
+    if (appName) return appName
+    
+    switch (pathname) {
+      case '/':
+        return 'Apna'
+      case '/explore':
+        return 'Explore Apps'
+      case '/settings':
+        return 'User Settings'
+      default:
+        return ''
+    }
+  }
+
+  const handleBackClick = () => {
+    if (onClose) {
+      onClose()
+    } else {
+      router.back()
+    }
+  }
+
   const handleRate = async () => {
+    if (!appId || !onRate) return
+
     const existingKeyPair = getKeyPairFromLocalStorage()
     if (!existingKeyPair) return
 
@@ -36,7 +66,7 @@ export default function TopBar({ appId, appName, onRate, onClose, showBackButton
     })
 
     await ReactToNote(appId, existingKeyPair.nsec, ratingData)
-    if (onRate) onRate()
+    onRate()
     setIsOpen(false)
   }
 
@@ -44,26 +74,10 @@ export default function TopBar({ appId, appName, onRate, onClose, showBackButton
     setFeedback(e.target.value)
   }
 
-  return (
-    <div className="bg-white border-b border-gray-200 px-4 py-2 flex justify-between items-center">
-      <div className="flex items-center gap-3">
-        {showBackButton && (
-          <Button 
-            variant="ghost" 
-            size="icon"
-            className="hover:bg-[#e6efe9]"
-            onClick={onClose}
-          >
-            <ArrowLeft className="w-5 h-5 text-[#368564]" />
-          </Button>
-        )}
-        {appName && (
-          <h1 className="text-lg font-semibold text-[#368564]">
-            {appName}
-          </h1>
-        )}
-      </div>
+  const renderAppControls = () => {
+    if (!appId) return null;
 
+    return (
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
         <DialogTrigger asChild>
           <Button variant="ghost" size="sm" className="hover:bg-[#e6efe9]">
@@ -109,6 +123,34 @@ export default function TopBar({ appId, appName, onRate, onClose, showBackButton
           </Button>
         </DialogContent>
       </Dialog>
+    )
+  }
+
+  const showBackButton = pathname === '/settings' || appName
+
+  return (
+    <div className="bg-white border-b border-gray-200 px-4 py-2 flex justify-between items-center">
+      <div className="flex items-center gap-3">
+        {showBackButton ? (
+          <Button 
+            variant="ghost" 
+            size="icon"
+            className="hover:bg-[#e6efe9]"
+            onClick={handleBackClick}
+          >
+            <ArrowLeft className="w-5 h-5 text-[#368564]" />
+          </Button>
+        ) : (
+          <UserDrawer />
+        )}
+        <h1 className="text-lg font-semibold text-[#368564]">
+          {getPageTitle()}
+        </h1>
+      </div>
+
+      <div className="flex items-center">
+        {renderAppControls()}
+      </div>
     </div>
   )
 }

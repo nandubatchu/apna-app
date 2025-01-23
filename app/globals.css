@@ -114,4 +114,34 @@
   .no-scrollbar::-webkit-scrollbar {
     display: none;
   }
+
+  /* Sheet animations */
+  .animate-in {
+    animation: enter 200ms ease-out;
+  }
+  .animate-out {
+    animation: exit 200ms ease-in;
+  }
+
+  @keyframes enter {
+    from {
+      opacity: 0;
+      transform: translateX(-100%);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  @keyframes exit {
+    from {
+      opacity: 1;
+      transform: translateX(0);
+    }
+    to {
+      opacity: 0;
+      transform: translateX(-100%);
+    }
+  }
 }

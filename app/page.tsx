@@ -26,9 +26,6 @@ export default function HomePage() {
     <>
       <div className="min-h-[100dvh] bg-[#f8faf9] overflow-x-hidden">
         <div className="p-4 pb-20">
-          <h1 className="text-2xl font-bold text-[#368564] mb-6 text-center">
-            Apna
-          </h1>
           <FavoritesList />
         </div>
       </div>
