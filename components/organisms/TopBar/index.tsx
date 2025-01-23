@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, ChangeEvent } from 'react'
+import React, { useState, ChangeEvent, useEffect } from 'react'
 import { Button } from '../../../components/ui/button'
 import { Star, ArrowLeft } from 'lucide-react'
 import UserDrawer from '../UserDrawer'
@@ -31,6 +31,11 @@ export default function TopBar(props: TopBarProps = {}) {
   const [hoveredRating, setHoveredRating] = useState(0)
   const [feedback, setFeedback] = useState('')
   const [isOpen, setIsOpen] = useState(false)
+  const [keyPair, setKeyPair] = useState<{ npub: string; nsec: string } | null>(null)
+
+  useEffect(() => {
+    setKeyPair(getKeyPairFromLocalStorage())
+  }, [])
 
   const getPageTitle = () => {
     if (appName) return appName
@@ -56,17 +61,14 @@ export default function TopBar(props: TopBarProps = {}) {
   }
 
   const handleRate = async () => {
-    if (!appId || !onRate) return
-
-    const existingKeyPair = getKeyPairFromLocalStorage()
-    if (!existingKeyPair) return
+    if (!appId || !onRate || !keyPair) return
 
     const ratingData = JSON.stringify({
       rating,
       feedback
     })
 
-    await ReactToNote(appId, existingKeyPair.nsec, ratingData)
+    await ReactToNote(appId, keyPair.nsec, ratingData)
     onRate()
     setIsOpen(false)
   }

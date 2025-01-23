@@ -1,6 +1,6 @@
 'use client'
 
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 import { Sheet, SheetContent, SheetTrigger } from '../../ui/sheet'
 import { Button } from '../../ui/button'
 import { User, Settings } from 'lucide-react'
@@ -8,7 +8,11 @@ import Link from 'next/link'
 import { getKeyPairFromLocalStorage } from '../../../lib/utils'
 
 export default function UserDrawer() {
-  const keyPair = getKeyPairFromLocalStorage()
+  const [keyPair, setKeyPair] = useState<{ npub: string; nsec: string } | null>(null)
+
+  useEffect(() => {
+    setKeyPair(getKeyPairFromLocalStorage())
+  }, [])
 
   return (
     <Sheet>
