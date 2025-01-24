@@ -8,6 +8,7 @@
     "name": "Apna",
     "short_name": "Apna",
     "description": "Discover and launch apps in the Apna ecosystem",
+    "permissions": ["notifications", "push"],
     "icons": [
         {
             "src": "/icon-192x192.png",
