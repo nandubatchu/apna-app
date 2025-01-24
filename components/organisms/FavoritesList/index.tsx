@@ -1,5 +1,6 @@
 "use client"
 import { useEffect, useState } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { useFavorites } from '@/lib/hooks/useFavorites';
 import { useApps } from '@/lib/hooks/useApps';
 import { SimpleAppCard } from '@/components/molecules/SimpleAppCard';
@@ -8,15 +9,40 @@ import type { AppDetails } from '@/lib/hooks/useApps';
 
 export default function FavoritesList() {
   const { favoriteApps, loading: favoritesLoading } = useFavorites();
+  const searchParams = useSearchParams();
+  const router = useRouter();
   const [selectedApp, setSelectedApp] = useState<{
     url: string;
     id: string;
     name: string;
   } | null>(null);
 
+  // Initialize from URL params on mount
+  useEffect(() => {
+    const appUrl = searchParams.get('appUrl');
+    const appId = searchParams.get('appId');
+    
+    if (appUrl && appId && !selectedApp) {
+      const app = favoriteApps.find(a => a.id === appId);
+      if (app) {
+        setSelectedApp({
+          url: appUrl,
+          id: appId,
+          name: app.appName
+        });
+      }
+    }
+  }, [searchParams, favoriteApps]);
+
   const handleAppSelect = (appURL: string, appId: string) => {
     const app = favoriteApps.find(a => a.id === appId);
     if (app) {
+      // Update URL with query params
+      const params = new URLSearchParams();
+      params.set('appUrl', appURL);
+      params.set('appId', appId);
+      router.push(`/?${params.toString()}`);
+      
       setSelectedApp({
         url: appURL,
         id: appId,
@@ -26,6 +52,8 @@ export default function FavoritesList() {
   };
 
   const handleModalClose = () => {
+    // Remove query params when closing
+    router.push('/');
     setSelectedApp(null);
   };
 

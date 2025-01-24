@@ -2,7 +2,8 @@
 
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import TopBar from "@/components/organisms/TopBar";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { Fab } from "@/components/ui/fab";
 import { IHostMethodHandlers } from "@apna/sdk";
 import { FollowNpub, UnfollowNpub, PublishNote, UpdateProfile, SubscribeToFeed, 
   SubscribeToNotifications, RepostNote, ReactToNote, ReplyToNote, GetNpubProfile, 
@@ -79,6 +80,8 @@ interface MiniAppModalProps {
 }
 
 export default function MiniAppModal({ isOpen, appUrl, appId, appName, onClose }: MiniAppModalProps) {
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
   useEffect(() => {
     if (typeof window !== "undefined" && isOpen) {
       const init = async () => {
@@ -96,29 +99,35 @@ export default function MiniAppModal({ isOpen, appUrl, appId, appName, onClose }
 
   return isOpen ? (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent variant="fullscreen" className="p-0">
+      <DialogContent variant="fullscreen" className="p-0 overflow-hidden">
         <div className="flex flex-col h-full">
-          <TopBar 
-            appId={appId} 
-            appName={appName}
-            onClose={onClose} 
-            showBackButton
-          />
+          {!isFullscreen && (
+            <TopBar
+              appId={appId}
+              appName={appName}
+              onClose={onClose}
+              showBackButton
+            />
+          )}
           <div className="flex-1">
             {appUrl && (
-              <iframe 
-                id="miniAppIframe" 
-                src={appUrl} 
-                style={{ 
-                  overflow: "hidden", 
-                  height: "100%", 
+              <iframe
+                id="miniAppIframe"
+                src={appUrl}
+                style={{
+                  overflow: "hidden",
+                  height: "100%",
                   width: "100%",
                   border: "none"
-                }} 
-                height="100%" 
+                }}
+                height="100%"
                 width="100%"
               />
             )}
+            <Fab
+              isFullscreen={isFullscreen}
+              onToggleFullscreen={() => setIsFullscreen(!isFullscreen)}
+            />
           </div>
         </div>
       </DialogContent>
