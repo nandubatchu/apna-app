@@ -426,6 +426,36 @@ const fetchAllFromAPI = async (filter: any, revalidate=false) => {
     return fetch(url).then(res=>res.json())
 }
 
+export const GetFeed = async (npub: string, feedType: string, since?: number, until?: number, limit?: number) => {
+    const filter: any = {
+        kinds: [1],
+        limit: limit || 20
+    }
+    if (since) filter.since = since;
+    if (until) filter.until = until;
+
+    switch (feedType) {
+        case "FOLLOWING_FEED":
+            const existingContacts = await fetchFromRelay([{
+                kinds: [3],
+                authors: [nip19.decode(npub).data as string]
+            }])
+            if (!existingContacts) {
+                return []
+            }
+            // @ts-ignore
+            filter.authors = existingContacts.tags.map((tag) => tag[0] === "p" && tag[1]).filter(a => a)
+            return fetchAllFromAPI(filter);
+            
+        case "NOTES_FEED":
+            filter.authors = [nip19.decode(npub).data as string]
+            return fetchAllFromAPI(filter);
+            
+        default:
+            return [];
+    }
+}
+
 export const Test = async () => {
     const relay = await Relay.connect(RELAY)
     console.log(`connected to ${relay.url}`)

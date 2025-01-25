@@ -7,7 +7,7 @@ import { Fab } from "@/components/ui/fab";
 import { IHostMethodHandlers } from "@apna/sdk";
 import { FollowNpub, UnfollowNpub, PublishNote, UpdateProfile, SubscribeToFeed, 
   SubscribeToNotifications, RepostNote, ReactToNote, ReplyToNote, GetNpubProfile, 
-  GetNpubProfileMetadata, GetNote, GetNoteReplies } from "@/lib/nostr";
+  GetNpubProfileMetadata, GetNote, GetNoteReplies, GetFeed } from "@/lib/nostr";
 import { getKeyPairFromLocalStorage } from "@/lib/utils";
 
 // Method handlers from the original mini-app page
@@ -18,8 +18,7 @@ const methodHandlers: IHostMethodHandlers = {
       return GetNpubProfile(existingKeyPair!.npub)
     },
     fetchUserMetadata(npub) {
-      const existingKeyPair = getKeyPairFromLocalStorage();
-      return GetNpubProfileMetadata(existingKeyPair!.npub)
+      return GetNpubProfileMetadata(npub)
     },
     updateProfileMetadata(profile) {
       const existingKeyPair = getKeyPairFromLocalStorage();
@@ -68,6 +67,17 @@ const methodHandlers: IHostMethodHandlers = {
     subscribeToUserFeed(npub, feedType, onevent, withReactions) {
       return SubscribeToFeed(npub, feedType, onevent);
     },
+    fetchFeed(feedType, since, until, limit) {
+      const existingKeyPair = getKeyPairFromLocalStorage();
+      return GetFeed(existingKeyPair!.npub, feedType, since, until, limit);
+    },
+    fetchUserFeed(npub, feedType, since, until, limit) {
+      return GetFeed(npub, feedType, since, until, limit);
+    },
+    subscribeToUserNotifications(onevent) {
+      const existingKeyPair = getKeyPairFromLocalStorage();
+      return SubscribeToNotifications(onevent, existingKeyPair!.npub);
+    }
   }
 }
 
