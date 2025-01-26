@@ -2,6 +2,7 @@ import './globals.css'
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import TopBar from '@/components/organisms/TopBar'
+import { ManifestHandler } from '@/components/ManifestHandler'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -26,7 +27,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className="h-full">
+      <head />
       <body className={`${inter.className} antialiased h-full`}>
+        <ManifestHandler />
         <div className="min-h-[100dvh] flex flex-col">
           <div className="sticky top-0 z-50">
             <TopBar />
