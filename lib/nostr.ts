@@ -130,6 +130,7 @@ const publishKind7 = async (nsec: string, tags: any[], content: string = "+") =>
 }
 
 export const FollowNpub = async (npub: string, nsec: string) => {
+    const pubkey = npub.includes("npub") ? nip19.decode(npub).data as string : npub
     const existingContacts = await fetchFromRelay([{
         kinds: [3],
         authors: [getPublicKey(nip19.decode(nsec).data as Uint8Array)]
@@ -138,12 +139,12 @@ export const FollowNpub = async (npub: string, nsec: string) => {
     let newTags = []
     if (existingContacts) {
         // @ts-ignore   
-        newTags.push(...existingContacts.tags, ["p", nip19.decode(npub).data as string])
+        newTags.push(...existingContacts.tags, ["p", pubkey])
         newTags = Array.from(
             new Set(newTags.map((item) => JSON.stringify(item)))
           ).map((json) => JSON.parse(json));
     } else {
-        newTags.push(["p", nip19.decode(npub).data as string])
+        newTags.push(["p", pubkey])
     }
     
 
