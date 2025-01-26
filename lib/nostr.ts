@@ -182,8 +182,9 @@ export const PublishNote = async (content: any, nsec: string) => {
 }
 
 export const RepostNote = async (noteId: string, quoteContent: string, nsec: string) => {
+    const noteIdRaw = noteId.includes("note1") ? nip19.decode(noteId).data as string : noteId
     const note: any = await fetchFromRelay([{
-        ids: [nip19.decode(noteId).data as string]
+        ids: [noteIdRaw]
     }])
 
     if (quoteContent) {
@@ -219,8 +220,9 @@ export const ReactToNote = async (noteId: string, nsec: string, content: string 
 }
 
 export const ReplyToNote = async (noteId: string, content: string, nsec: string) => {
+    const noteIdRaw = noteId.includes("note1") ? nip19.decode(noteId).data as string : noteId
     const note: any = await fetchFromRelay([{
-        ids: [nip19.decode(noteId).data as string]
+        ids: [noteIdRaw]
     }])
     const eTags: string[][] = note.tags.filter((t: string[]) => t[0] === "e");
     const tags = [
@@ -285,9 +287,10 @@ export const SubscribeToNotifications = async (callback: (note: any) => void, np
 }
 
 export const GetNoteReplies = async (noteId: string) => {
+    const noteIdRaw = noteId.includes("note1") ? nip19.decode(noteId).data as string : noteId
     return fetchAllFromAPI({
         kinds: [1],
-        "#e": [nip19.decode(noteId).data as string]
+        "#e": [noteIdRaw]
     })
     return (await fetchAllFromRelay([{
         kinds: [1],
@@ -296,9 +299,10 @@ export const GetNoteReplies = async (noteId: string) => {
 }
 
 export const GetNoteZaps = async (noteId: string) => {
+    const noteIdRaw = noteId.includes("note1") ? nip19.decode(noteId).data as string : noteId
     return (await fetchAllFromRelay([{
         kinds: [9735],
-        "#e": [nip19.decode(noteId).data as string]
+        "#e": [noteIdRaw]
     }])) as (NostrEvent & {kind:9735})[]
 }
 
@@ -330,8 +334,9 @@ export const GetNpubProfileMetadata = async (npub: string) => {
 }
 
 export const GetNote = async (noteId: string) => {
+    const noteIdRaw = noteId.includes("note1") ? nip19.decode(noteId).data as string : noteId
     return (await fetchFromRelay([{
-        kinds: [1]
+        ids: [noteIdRaw]
     }])) as NostrEvent & {kind: 1}
 }
 
