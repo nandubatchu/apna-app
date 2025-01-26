@@ -1,10 +1,37 @@
 import { NextResponse } from 'next/server';
-import { getKeyPairFromLocalStorage } from '@/lib/utils';
-import { headers } from 'next/headers';
+
+interface FavoriteApp {
+  name: string;
+  appUrl: string;
+  appId: string;
+}
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const pubkey = searchParams.get('pubkey');
+  const favorites = searchParams.get('favorites');
+
+  let shortcuts: any[] = [];
+  
+  if (favorites) {
+    try {
+      const favoriteApps: FavoriteApp[] = JSON.parse(decodeURIComponent(favorites));
+      shortcuts = favoriteApps.map(app => ({
+        name: app.name,
+        short_name: app.name,
+        url: `/?appUrl=${encodeURIComponent(app.appUrl)}&appId=${app.appId}`,
+        icons: [{
+          src: "/icon-192x192.png",
+          sizes: "192x192",
+          type: "image/png",
+          purpose: "maskable"
+        }]
+      }));
+    } catch (error) {
+      console.error('Error parsing favorites:', error);
+    }
+  }
+  console.log(pubkey, favorites, shortcuts)
   const manifest = {
     theme_color: "#368564",
     background_color: "#f8faf9",
@@ -65,21 +92,7 @@ export async function GET(request: Request) {
         purpose: "maskable"
       }
     ],
-    shortcuts: [
-      {
-        name: "Social2",
-        short_name: "Social",
-        url: "/social?miniAppUrl=https://social-mini-app.vercel.app",
-        icons: [
-          {
-            src: "/icon-192x192.png",
-            sizes: "192x192",
-            type: "image/png",
-            purpose: "maskable"
-          }
-        ]
-      }
-    ]
+    shortcuts
   };
 
   return new NextResponse(JSON.stringify(manifest, null, 2), {
