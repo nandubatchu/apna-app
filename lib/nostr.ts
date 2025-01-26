@@ -432,6 +432,7 @@ const fetchAllFromAPI = async (filter: any, revalidate=false) => {
 }
 
 export const GetFeed = async (npub: string, feedType: string, since?: number, until?: number, limit?: number) => {
+    const authorRaw = npub.includes("npub") ? nip19.decode(npub).data as string : npub
     const filter: any = {
         kinds: [1],
         limit: limit || 20
@@ -443,9 +444,9 @@ export const GetFeed = async (npub: string, feedType: string, since?: number, un
         case "FOLLOWING_FEED":
             const existingContacts = await fetchFromRelay([{
                 kinds: [3],
-                authors: [nip19.decode(npub).data as string]
+                authors: [authorRaw]
             }])
-            if (!existingContacts) {
+            if (!existingContacts) {                
                 return []
             }
             // @ts-ignore
@@ -453,7 +454,7 @@ export const GetFeed = async (npub: string, feedType: string, since?: number, un
             return fetchAllFromAPI(filter);
             
         case "NOTES_FEED":
-            filter.authors = [nip19.decode(npub).data as string]
+            filter.authors = [authorRaw]
             return fetchAllFromAPI(filter);
             
         default:
