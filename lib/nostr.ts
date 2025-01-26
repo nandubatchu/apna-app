@@ -307,9 +307,10 @@ export const GetNoteZaps = async (noteId: string) => {
 }
 
 const getNprofile = async (npub: string) => {
+    const pubkey = npub.includes("npub") ? nip19.decode(npub).data as string : npub
     const config = await fetchFromRelay([{
         kinds: [3],
-        authors: [nip19.decode(npub).data as string]
+        authors: [pubkey]
     }])
    
     let relays = [RELAY]
@@ -317,7 +318,7 @@ const getNprofile = async (npub: string) => {
          // @ts-ignore
         relays = config.tags.map((tag) => tag[0] === "r" && tag[1]).filter(a => a)
     }
-    return nip19.nprofileEncode({ pubkey: nip19.decode(npub).data as string, relays })
+    return nip19.nprofileEncode({ pubkey, relays })
 }
 
 export const GetNpubProfileMetadata = async (npub: string) => {
@@ -341,18 +342,20 @@ export const GetNote = async (noteId: string) => {
 }
 
 const getFollowing = async (npub: string): Promise<string[]> => {
+    const pubkey = npub.includes("npub") ? nip19.decode(npub).data as string : npub
     const following = await fetchFromRelay([{
         kinds: [3],
-        authors: [nip19.decode(npub).data as string]
+        authors: [pubkey]
     }])
     // @ts-ignore
     return following.tags.map((tag) => tag[0] === "p" && tag[1]).filter(a => a)
 }   
 
 const getFollowers = async (npub: string) => {
+    const pubkey = npub.includes("npub") ? nip19.decode(npub).data as string : npub
     const followers = await fetchAllFromRelay([{
         kinds: [3],
-        "#p": [nip19.decode(npub).data as string]
+        "#p": [pubkey]
     }])
     // @ts-ignore
     return followers.map((e) => e.pubkey)
