@@ -24,9 +24,7 @@ export default function HomeLauncherComponent() {
     return (
         <div className="min-h-[100dvh] bg-[#f8faf9] overflow-x-hidden">
             <div className="p-4 pb-20">
-                <div className="flex justify-center mb-8">
-                    <SubmitApp />
-                </div>
+                <SubmitApp />
                 <AppList />
             </div>
         </div>
