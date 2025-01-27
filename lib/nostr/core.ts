@@ -46,8 +46,10 @@ export const fetchAllFromRelay = async (filter: Filter): Promise<NostrEvent[]> =
     }
 }
 
+import { PUBLIC_BASE_URL } from '@/lib/constants';
+
 export const fetchAllFromAPI = async (filter: Filter, revalidate=false) => {
-    let url = `/api/nostr/pool/get?`
+    let url = `${PUBLIC_BASE_URL}/api/nostr/pool/get?`
     if (revalidate) {
         url = `${url}noCache=1&`
     }
