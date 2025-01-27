@@ -1,15 +1,28 @@
 'use client'
 import React from 'react'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { AppCard } from '@/components/molecules/AppCard'
-import { useApps } from '@/lib/hooks/useApps'
+import { useApps, APP_CATEGORIES } from '@/lib/hooks/useApps'
 import MiniAppModal from '../MiniAppModal'
 import { Button } from '@/components/ui/button'
 import type { AppDetails } from '@/lib/hooks/useApps'
 
 export default function AppLauncherList() {
   const [selectedApp, setSelectedApp] = useState<AppDetails | null>(null)
+  const [selectedCategory, setSelectedCategory] = useState<string>("popular")
   const { apps, loading, error, refetch } = useApps();
+
+  // Listen for drawer close events to refresh the list
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'apna_drawer_closed') {
+        refetch(true);
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, [refetch]);
 
   const handleAppSelect = (appURL: string, appId: string) => {
     const app = apps.find(a => a.id === appId);
@@ -21,6 +34,13 @@ export default function AppLauncherList() {
   const handleClose = () => {
     setSelectedApp(null)
   }
+
+  const filteredApps = apps.filter(app => {
+    if (selectedCategory === "popular") {
+      return true; // Show all apps, they're already sorted by rating
+    }
+    return app.categories.includes(selectedCategory as any);
+  });
 
   if (loading) {
     return (
@@ -47,8 +67,37 @@ export default function AppLauncherList() {
   return (
     <>
       <div className="max-w-3xl mx-auto w-full">
+        {/* Category Tabs */}
+        <div className="mb-6 overflow-x-auto">
+          <div className="flex space-x-2 min-w-max pb-2">
+            <button
+              onClick={() => setSelectedCategory("popular")}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors
+                ${selectedCategory === "popular"
+                  ? "bg-[#368564] text-white"
+                  : "bg-[#e6efe9] text-[#368564] hover:bg-[#d1e4d9]"
+                }`}
+            >
+              Most Popular
+            </button>
+            {APP_CATEGORIES.map((category) => (
+              <button
+                key={category}
+                onClick={() => setSelectedCategory(category)}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors
+                  ${selectedCategory === category
+                    ? "bg-[#368564] text-white"
+                    : "bg-[#e6efe9] text-[#368564] hover:bg-[#d1e4d9]"
+                  }`}
+              >
+                {category}
+              </button>
+            ))}
+          </div>
+        </div>
+
         <div className="flex flex-col space-y-3">
-          {apps.map((app) => (
+          {filteredApps.map((app) => (
             <AppCard
               key={app.id}
               app={app}
@@ -58,9 +107,11 @@ export default function AppLauncherList() {
           ))}
         </div>
         
-        {apps.length === 0 && (
+        {filteredApps.length === 0 && (
           <div className="text-center py-8 text-gray-600">
-            No apps found
+            {selectedCategory === "popular" 
+              ? "No apps found"
+              : `No apps found in ${selectedCategory} category`}
           </div>
         )}
       </div>

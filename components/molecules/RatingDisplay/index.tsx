@@ -3,7 +3,7 @@
 import { Star } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
-import { Avatar, AvatarFallback } from '@radix-ui/react-avatar'
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { GetNpubProfileMetadata } from '@/lib/nostr'
 import { useState } from 'react'
 
@@ -94,8 +94,8 @@ export function RatingDisplay({ app }: { app: AppDetails }) {
                             <div key={index} className="border rounded-lg p-4">
                                 <div className="flex items-center justify-between mb-2">
                                     <div className="flex items-center space-x-2">
-                                        <Avatar className="h-8 w-8 rounded-full bg-[#e6efe9]">
-                                            <AvatarFallback className="text-[#368564]">
+                                        <Avatar className="h-8 w-8">
+                                            <AvatarFallback className="bg-[#e6efe9] text-[#368564] text-xs">
                                                 {feedback.authorMetadata?.name?.[0]?.toUpperCase() || '?'}
                                             </AvatarFallback>
                                         </Avatar>

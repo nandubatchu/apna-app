@@ -1,6 +1,20 @@
 import { GetNoteReactions, GetNoteReplies, GetNpubProfileMetadata } from '@/lib/nostr';
 import { useState, useEffect } from 'react';
 
+export const APP_CATEGORIES = [
+    "Productivity",
+    "Social",
+    "Entertainment",
+    "Education",
+    "Finance",
+    "Health & Fitness",
+    "Games",
+    "Utilities",
+    "Miscellaneous"
+] as const;
+
+type AppCategory = typeof APP_CATEGORIES[number];
+
 interface AppDetails {
     appURL: string;
     appName: string;
@@ -8,6 +22,9 @@ interface AppDetails {
     pubkey: string;
     reactions: any[];
     avgRating: string;
+    categories: AppCategory[];
+    mode: "Full-page";
+    description: string;
     authorMetadata: {
         name?: string;
     };
@@ -17,7 +34,15 @@ function parseAppDetailsFromJSON(text: string) {
     try {
         const json = JSON.parse(text);
         if (json && typeof json === 'object' && 'appURL' in json) {
-            return { appURL: json.appURL, appName: json.appName };
+            return {
+                appURL: json.appURL,
+                appName: json.appName,
+                categories: Array.isArray(json.categories) 
+                    ? json.categories.filter((cat: any) => APP_CATEGORIES.includes(cat))
+                    : ["Miscellaneous"],
+                mode: json.mode || "Full-page",
+                description: json.description || `A ${json.categories?.[0] || "Miscellaneous"} app`
+            };
         } else {
             return null;
         }
@@ -127,3 +152,4 @@ export function useApps() {
 }
 
 export type { AppDetails };
+export type { AppCategory };

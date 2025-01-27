@@ -31,7 +31,7 @@ export async function GET(request: Request) {
       console.error('Error parsing favorites:', error);
     }
   }
-  console.log(pubkey, favorites, shortcuts)
+  // console.log(pubkey, favorites, shortcuts)
   const manifest = {
     theme_color: "#368564",
     background_color: "#f8faf9",
