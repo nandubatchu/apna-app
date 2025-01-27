@@ -47,6 +47,8 @@ export default function TopBar(props: TopBarProps = {}) {
         return 'Explore Apps'
       case '/settings':
         return 'User Settings'
+      case '/feedback':
+        return 'Community Feedback'
       default:
         return ''
     }
@@ -129,7 +131,7 @@ export default function TopBar(props: TopBarProps = {}) {
     )
   }
 
-  const displayBackButton = showBackButton || pathname === '/settings'
+  const displayBackButton = showBackButton || pathname === '/settings' || pathname === '/feedback'
 
   return (
     <div className="bg-white border-b border-gray-200 px-4 py-2 flex justify-between items-center">
