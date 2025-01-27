@@ -1,51 +1,13 @@
-import { getPublicKey, VerifiedEvent, Event as NostrEvent, Filter } from 'nostr-tools'
+import { Event as NostrEvent, Filter, getPublicKey } from 'nostr-tools'
 import * as nip19 from 'nostr-tools/nip19'
-import { SimplePool } from 'nostr-tools/pool'
-import { setNostrWasm, generateSecretKey, finalizeEvent, verifyEvent } from 'nostr-tools/wasm'
-import { initNostrWasm } from 'nostr-wasm'
+import { fetchFromRelay, fetchAllFromRelay, fetchAllFromAPI, subscribeToEvents, filterTagValues, DEFAULT_RELAYS, pool } from './core'
+import { publishKind0, publishKind1, publishKind3, publishKind6, publishKind7, GenerateKeyPair } from './events'
 import * as crypto from 'crypto'
-import { revalidateTag } from 'next/cache'
-
-const DEFAULT_RELAYS = [
-    "wss://eden.nostr.land/",
-    "wss://nostr.wine/",
-    "wss://relay.damus.io/",
-    "wss://relay.nostr.band/",
-    "wss://relay.snort.social"
-]
-const pool = new SimplePool()
-
-// make sure this promise resolves before your app starts calling finalizeEvent or verifyEvent
-const initPromise = initNostrWasm().then(setNostrWasm)
-
-declare global {
-    interface Window {
-        nip19: any;
-    }
-}
-if (typeof window !== "undefined") {
-    window.nip19 = nip19
-}
-
-export const GenerateKeyPair = () => {
-    let sk = generateSecretKey() // `sk` is a Uint8Array
-    let nsec = nip19.nsecEncode(sk)
-
-    let pk = getPublicKey(sk) // `pk` is a hex string
-    let npub = nip19.npubEncode(pk)
-
-    const keyPair = {
-        nsec,
-        npub,
-    }
-    console.log(keyPair)
-    return keyPair
-}
 
 export const InitialiseProfile = async (nsec: string) => {
-    let nprofile = nip19.nprofileEncode({
-        pubkey: getPublicKey(nip19.decode(nsec).data as Uint8Array),
-        relays: DEFAULT_RELAYS
+    let nprofile = nip19.nprofileEncode({ 
+        pubkey: getPublicKey(nip19.decode(nsec).data as Uint8Array), 
+        relays: DEFAULT_RELAYS 
     })
     let metadata = {
         name: crypto.randomBytes(10).toString('hex').slice(0, 10),
@@ -64,80 +26,12 @@ export const InitialiseProfile = async (nsec: string) => {
     return profile
 }
 
-const publishEvent = async (nsec: string, event: any) => {
-    const decodedNsec = nip19.decode(nsec);
-    if (decodedNsec.type != "nsec") {
-        throw new Error("invalid nsec");
-    }
-    const sk = decodedNsec.data;
-    await initPromise;
-    let signedEvent = finalizeEvent(event, sk)
-    let isGood = verifyEvent(signedEvent)
-    console.log(`signedEvent - ${JSON.stringify(signedEvent)}`)
-    if (!isGood) {
-        throw new Error("event verification failed")
-    }
-    const pub = await pool.publish(DEFAULT_RELAYS, signedEvent)
-    console.log(`published event - ${pub}`)
-    return signedEvent
-}
-
-const publishKind0 = async (nsec: string, profile: any) => {
-    const event = {
-        kind: 0,
-        created_at: Math.floor(Date.now() / 1000),
-        tags: [],
-        content: JSON.stringify(profile),
-    }
-    return publishEvent(nsec, event)
-}
-
-const publishKind1 = async (nsec: string, content: string, tags: any[] = []) => {
-    const event = {
-        kind: 1,
-        created_at: Math.floor(Date.now() / 1000),
-        tags,
-        content,
-    }
-    return (await publishEvent(nsec, event)) as VerifiedEvent & { kind: 1 }
-}
-
-const publishKind3 = async (nsec: string, tags: any[]) => {
-    const event = {
-        kind: 3,
-        created_at: Math.floor(Date.now() / 1000),
-        tags,
-        content: "",
-    }
-    await publishEvent(nsec, event)
-}
-
-const publishKind6 = async (nsec: string, content: string, tags: any[]) => {
-    const event = {
-        kind: 6,
-        created_at: Math.floor(Date.now() / 1000),
-        tags,
-        content,
-    }
-    return (await publishEvent(nsec, event)) as VerifiedEvent & { kind: 6 }
-}
-
-const publishKind7 = async (nsec: string, tags: any[], content: string = "+") => {
-    const event = {
-        kind: 7,
-        created_at: Math.floor(Date.now() / 1000),
-        tags,
-        content,
-    }
-    return (await publishEvent(nsec, event)) as VerifiedEvent & { kind: 7 }
-}
-
 export const FollowNpub = async (npub: string, nsec: string) => {
     const pubkey = npub.includes("npub") ? nip19.decode(npub).data as string : npub
-    const existingContacts = await fetchFromRelay([{
+    const existingContacts = await fetchFromRelay({
         kinds: [3],
         authors: [getPublicKey(nip19.decode(nsec).data as Uint8Array)]
-    }])
+    })
     console.log(existingContacts)
     let newTags = []
     if (existingContacts) {
@@ -153,10 +47,10 @@ export const FollowNpub = async (npub: string, nsec: string) => {
 }
 
 export const UnfollowNpub = async (npub: string, nsec: string) => {
-    const existingContacts = await fetchFromRelay([{
+    const existingContacts = await fetchFromRelay({
         kinds: [3],
         authors: [getPublicKey(nip19.decode(nsec).data as Uint8Array)]
-    }])
+    })
     console.log(existingContacts)
     if (!existingContacts) {
         return
@@ -166,63 +60,15 @@ export const UnfollowNpub = async (npub: string, nsec: string) => {
     return publishKind3(nsec, newTags)
 }
 
-const subscribeToEvents = async (filter: Filter, callback: (e: NostrEvent) => void) => {
-    let lastEventTime = Math.floor(Date.now() / 1000);
-    
-    // Initial fetch
-    const initialEvents = await pool.querySync(DEFAULT_RELAYS, filter, {
-        maxWait: 5000
-    });
-    initialEvents.forEach(e => {
-        console.log('## got event:', e)
-        callback(e)
-    });
-
-    // Set up polling for new events
-    const pollInterval = setInterval(async () => {
-        const newFilter = {
-            ...filter,
-            since: lastEventTime
-        };
-        
-        const newEvents = await pool.querySync(DEFAULT_RELAYS, newFilter, {
-            maxWait: 5000
-        });
-        
-        if (newEvents.length > 0) {
-            lastEventTime = Math.max(...newEvents.map(e => e.created_at));
-            newEvents.forEach(e => {
-                console.log('## got event:', e)
-                callback(e)
-            });
-        }
-    }, 5000); // Poll every 5 seconds
-
-    // Return cleanup function
-    return () => clearInterval(pollInterval);
-}
-
-// Helper function to convert array of filters to a single filter
-const combineFilters = (filters: Filter[]): Filter => {
-    return filters.reduce((acc, filter) => ({
-        ...acc,
-        ...filter,
-        // Properly handle arrays
-        ...(filter.authors && acc.authors ? { authors: [...acc.authors, ...filter.authors] } : {}),
-        ...(filter.ids && acc.ids ? { ids: [...acc.ids, ...filter.ids] } : {}),
-        ...(filter.kinds && acc.kinds ? { kinds: [...acc.kinds, ...filter.kinds] } : {}),
-    }), filters[0] || {});
-};
-
 export const PublishNote = async (content: any, nsec: string) => {
     return publishKind1(nsec, content)
 }
 
 export const RepostNote = async (noteId: string, quoteContent: string, nsec: string) => {
     const noteIdRaw = noteId.includes("note1") ? nip19.decode(noteId).data as string : noteId
-    const note: any = await fetchFromRelay([{
+    const note: any = await fetchFromRelay({
         ids: [noteIdRaw]
-    }])
+    })
 
     if (quoteContent) {
         const content = quoteContent
@@ -244,9 +90,9 @@ export const RepostNote = async (noteId: string, quoteContent: string, nsec: str
 
 export const ReactToNote = async (noteId: string, nsec: string, content: string = "+") => {
     const noteIdRaw = noteId.includes("note1") ? nip19.decode(noteId).data as string : noteId
-    const note: any = await fetchFromRelay([{
+    const note: any = await fetchFromRelay({
         ids: [noteIdRaw]
-    }])
+    })
     const tags = [
         ['e', note.id],
         ['p', note.pubkey],
@@ -256,9 +102,9 @@ export const ReactToNote = async (noteId: string, nsec: string, content: string 
 
 export const ReplyToNote = async (noteId: string, content: string, nsec: string) => {
     const noteIdRaw = noteId.includes("note1") ? nip19.decode(noteId).data as string : noteId
-    const note: any = await fetchFromRelay([{
+    const note: any = await fetchFromRelay({
         ids: [noteIdRaw]
-    }])
+    })
     const eTags: string[][] = note.tags.filter((t: string[]) => t[0] === "e");
     const tags = [
         ...eTags,
@@ -284,27 +130,30 @@ export const UpdateProfile = async (profileMetadata: any, nsec: string) => {
 }
 
 export const SubscribeToFeed = async (npub: string, feedType: string, callback: (note: NostrEvent) => void) => {
+    const pubkey = nip19.decode(npub).data as string
+    
     switch (feedType) {
-        case "FOLLOWING_FEED":
-            const existingContacts = await fetchFromRelay([{
+        case "FOLLOWING_FEED": {
+            const existingContacts = await fetchFromRelay({
                 kinds: [3],
-                authors: [nip19.decode(npub).data as string]
-            }])
+                authors: [pubkey]
+            })
             console.log(existingContacts)
             if (!existingContacts) {
                 return
-            }
+            } 
             const followingAuthors = filterTagValues(existingContacts.tags, "p")
             await subscribeToEvents({
                 kinds: [1],
                 authors: followingAuthors
             }, callback)
             break;
+        }
 
         case "NOTES_FEED":
             await subscribeToEvents({
                 kinds: [1],
-                authors: [nip19.decode(npub).data as string]
+                authors: [pubkey]
             }, callback)
             break;
     
@@ -334,15 +183,15 @@ export const GetNoteZaps = async (noteId: string) => {
         kinds: [9735],
         "#e": [noteIdRaw]
     }
-    return (await fetchAllFromRelay([filter])) as (NostrEvent & {kind:9735})[]
+    return (await fetchAllFromRelay(filter)) as (NostrEvent & {kind:9735})[]
 }
 
 const getNprofile = async (npub: string) => {
     const pubkey = npub.includes("npub") ? nip19.decode(npub).data as string : npub
-    const config = await fetchFromRelay([{
+    const config = await fetchFromRelay({
         kinds: [3],
         authors: [pubkey]
-    }])
+    })
    
     let relays = DEFAULT_RELAYS
     if (config) {
@@ -363,19 +212,19 @@ export const GetNpubProfileMetadata = async (npub: string) => {
 
 export const GetNote = async (noteId: string) => {
     const noteIdRaw = noteId.includes("note1") ? nip19.decode(noteId).data as string : noteId
-    return (await fetchFromRelay([{
+    return (await fetchFromRelay({
         ids: [noteIdRaw]
-    }])) as NostrEvent & {kind: 1}
+    })) as NostrEvent & {kind: 1}
 }
 
 const getFollowing = async (npub: string): Promise<string[]> => {
     const pubkey = npub.includes("npub") ? nip19.decode(npub).data as string : npub
-    const following = await fetchFromRelay([{
+    const following = await fetchFromRelay({
         kinds: [3],
         authors: [pubkey]
-    }])
+    })
     return following ? filterTagValues(following.tags, "p") : []
-}
+}   
 
 const getFollowers = async (npub: string): Promise<string[]> => {
     const pubkey = npub.includes("npub") ? nip19.decode(npub).data as string : npub
@@ -383,7 +232,7 @@ const getFollowers = async (npub: string): Promise<string[]> => {
         kinds: [3],
         "#p": [pubkey]
     }
-    const followers = await fetchAllFromRelay([filter])
+    const followers = await fetchAllFromRelay(filter)
     return followers.map((e) => e.pubkey)
 }
 
@@ -409,55 +258,6 @@ export const GetNoteReactions = async (noteId: string, revalidate: boolean=false
     }, revalidate)
 }
 
-const fetchFromRelay = async (filters: Filter[]): Promise<NostrEvent|null> => {
-    try {
-        const filter = combineFilters(filters)
-        const event = await pool.get(DEFAULT_RELAYS, filter)
-        if (event) {
-            console.log('## got event:', event)
-            return event
-        }
-        return null
-    } catch (error) {
-        console.error('Error fetching from relay:', error)
-        return null
-    }
-}
-
-const fetchAllFromRelay = async (filters: Filter[]): Promise<NostrEvent[]> => {
-    try {
-        const filter = combineFilters(filters)
-        const events = await pool.querySync(DEFAULT_RELAYS, filter, {
-            maxWait: 10000
-        })
-        console.log('## got events:', events)
-        return events
-    } catch (error) {
-        console.error('Error fetching from relay:', error)
-        return []
-    }
-}
-
-// Helper function to safely filter tag values to string[]
-const filterTagValues = (tags: any[], tagName: string): string[] => {
-    if (!tags) return [];
-    return tags
-        .filter(tag => Array.isArray(tag) && tag[0] === tagName && typeof tag[1] === 'string')
-        .map(tag => tag[1]);
-};
-
-const fetchAllFromAPI = async (filter: Filter, revalidate=false) => {
-    let url = `/api/nostr/pool/get?`
-    if (revalidate) {
-        url = `${url}noCache=1&`
-    }
-    url = `${url}query=${encodeURIComponent(JSON.stringify({
-        relays: DEFAULT_RELAYS,
-        filter
-    }))}`
-    return fetch(url).then(res=>res.json())
-}
-
 export const GetFeed = async (npub: string, feedType: string, since?: number, until?: number, limit?: number) => {
     const authorRaw = npub.includes("npub") ? nip19.decode(npub).data as string : npub
     const baseFilter: Filter = {
@@ -469,11 +269,11 @@ export const GetFeed = async (npub: string, feedType: string, since?: number, un
 
     switch (feedType) {
         case "FOLLOWING_FEED": {
-            const existingContacts = await fetchFromRelay([{
+            const existingContacts = await fetchFromRelay({
                 kinds: [3],
                 authors: [authorRaw]
-            }])
-            if (!existingContacts) {
+            })
+            if (!existingContacts) {                
                 return []
             }
             const followingAuthors = filterTagValues(existingContacts.tags, "p")
@@ -514,40 +314,5 @@ export const Test = async () => {
     return events
 }
 
-export const CreateEvent = async (nsec: string) => {
-    const decodedNsec = nip19.decode(nsec);
-    if (decodedNsec.type != "nsec") {
-        throw new Error("invalid nsec");
-    }
-    
-    const sk = decodedNsec.data;
-    await initPromise;
-    
-    let event = finalizeEvent({
-        kind: 1,
-        created_at: Math.floor(Date.now() / 1000),
-        tags: [],
-        content: 'hello world',
-    }, sk)
-
-    let isGood = verifyEvent(event)
-    if (isGood) {
-        const pub = await pool.publish(DEFAULT_RELAYS, event)
-        console.log(`published event - ${pub}`)
-        
-        const filter: Filter = {
-            kinds: [1],
-            authors: [getPublicKey(sk)]
-        }
-        
-        const events = await pool.querySync(DEFAULT_RELAYS, filter, {
-            maxWait: 5000
-        })
-        
-        events.forEach(e => {
-            console.log('got event:', e)
-        })
-        
-        console.log(nip19.decode("note1lsu33avk5cu9rww002kuwkjd68ezpn33aq2yxuxc9euxn077x3ssz2d4fs"))
-    }
-}
+// Re-export everything from events
+export { GenerateKeyPair } from './events'
