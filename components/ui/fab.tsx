@@ -7,10 +7,19 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Expand } from "lucide-react"
+import { Expand, Star } from "lucide-react"
 import Image from "next/image"
 import { motion, useMotionValue, useTransform, useSpring } from "framer-motion"
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useRef, useState, ChangeEvent } from "react"
+import {
+  Dialog,
+  DialogTrigger,
+  DialogContent,
+  DialogHeader,
+  DialogTitle
+} from "@/components/ui/dialog"
+import { ReactToNote } from "@/lib/nostr"
+import { getKeyPairFromLocalStorage } from "@/lib/utils"
 
 const MotionDiv = motion.div
 const FAB_SIZE = 48 // Reduced size by ~15%
@@ -18,9 +27,11 @@ const FAB_SIZE = 48 // Reduced size by ~15%
 interface FabProps {
   onToggleFullscreen: () => void;
   isFullscreen: boolean;
+  appId?: string;
+  onRate?: () => void;
 }
 
-export function Fab({ onToggleFullscreen, isFullscreen }: FabProps) {
+export function Fab({ onToggleFullscreen, isFullscreen, appId, onRate }: FabProps) {
   const fabRef = useRef<HTMLDivElement>(null)
   const x = useMotionValue(0)
   const y = useMotionValue(0)
@@ -30,6 +41,15 @@ export function Fab({ onToggleFullscreen, isFullscreen }: FabProps) {
     left: 0,
     right: 0
   })
+  const [rating, setRating] = useState(0)
+  const [hoveredRating, setHoveredRating] = useState(0)
+  const [feedback, setFeedback] = useState('')
+  const [isOpen, setIsOpen] = useState(false)
+  const [keyPair, setKeyPair] = useState<{ npub: string; nsec: string } | null>(null)
+
+  useEffect(() => {
+    setKeyPair(getKeyPairFromLocalStorage())
+  }, [])
   
   // Spring animation for snapping to sides
   const springX = useSpring(x, { damping: 20 })
@@ -85,6 +105,23 @@ export function Fab({ onToggleFullscreen, isFullscreen }: FabProps) {
     }
   }
 
+  const handleRate = async () => {
+    if (!appId || !onRate || !keyPair) return
+
+    const ratingData = JSON.stringify({
+      rating,
+      feedback
+    })
+
+    await ReactToNote(appId, keyPair.nsec, ratingData)
+    onRate()
+    setIsOpen(false)
+  }
+
+  const handleFeedbackChange = (e: ChangeEvent<HTMLTextAreaElement>) => {
+    setFeedback(e.target.value)
+  }
+
   return (
     <MotionDiv 
       ref={fabRef}
@@ -125,6 +162,53 @@ export function Fab({ onToggleFullscreen, isFullscreen }: FabProps) {
           sideOffset={8}
           alignOffset={-8}
         >
+          {appId && (
+            <Dialog open={isOpen} onOpenChange={setIsOpen}>
+              <DialogTrigger asChild>
+                <DropdownMenuItem onSelect={(e: Event) => e.preventDefault()}>
+                  <Star className="mr-2 h-4 w-4" />
+                  Rate App
+                </DropdownMenuItem>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Rate this App</DialogTitle>
+                </DialogHeader>
+                <div className="flex justify-center space-x-1 mb-4">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <Button
+                      key={star}
+                      variant="ghost"
+                      size="sm"
+                      className="p-1 hover:bg-[#e6efe9]"
+                      onMouseEnter={() => setHoveredRating(star)}
+                      onMouseLeave={() => setHoveredRating(0)}
+                      onClick={() => setRating(star)}
+                    >
+                      <Star
+                        className="w-8 h-8"
+                        fill={(hoveredRating || rating) >= star ? "#368564" : "none"}
+                        color="#368564"
+                      />
+                    </Button>
+                  ))}
+                </div>
+                <textarea
+                  placeholder="Share your feedback about this app (optional)"
+                  value={feedback}
+                  onChange={handleFeedbackChange}
+                  className="w-full min-h-[100px] p-2 border rounded-md mb-4 focus:outline-none focus:ring-2 focus:ring-[#368564]"
+                />
+                <Button
+                  onClick={handleRate}
+                  disabled={rating === 0}
+                  className="w-full bg-[#368564] hover:bg-[#2c6b51] text-white"
+                >
+                  Submit Rating
+                </Button>
+              </DialogContent>
+            </Dialog>
+          )}
           <DropdownMenuItem onClick={onToggleFullscreen}>
             <Expand className="mr-2 h-4 w-4" />
             {isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}

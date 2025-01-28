@@ -169,12 +169,22 @@ export const SubscribeToNotifications = async (callback: (note: NostrEvent) => v
     }, callback)
 }
 
-export const GetNoteReplies = async (noteId: string) => {
+export const GetNoteReplies = async (noteId: string, direct: boolean = false) => {
     const noteIdRaw = noteId.includes("note1") ? nip19.decode(noteId).data as string : noteId
-    return fetchAllFromAPI({
+    const replies = await fetchAllFromAPI({
         kinds: [1],
         "#e": [noteIdRaw]
-    })
+    });
+
+    if (direct) {
+        // Filter for direct replies only - where the last "e" tag marked "reply" matches the note ID
+        return replies.filter((reply: NostrEvent) => {
+            const eTags = reply.tags.filter(tag => tag[0] === "e");
+            const lastReplyTag = eTags.findLast(tag => tag[3] === "reply");
+            return lastReplyTag && lastReplyTag[1] === noteIdRaw || eTags.length === 1;
+        });
+    }
+    return replies;
 }
 
 export const GetNoteZaps = async (noteId: string) => {

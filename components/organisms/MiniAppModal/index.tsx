@@ -90,7 +90,7 @@ interface MiniAppModalProps {
 }
 
 export default function MiniAppModal({ isOpen, appUrl, appId, appName, onClose }: MiniAppModalProps) {
-  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(true);
 
   useEffect(() => {
     if (typeof window !== "undefined" && isOpen) {
@@ -137,6 +137,14 @@ export default function MiniAppModal({ isOpen, appUrl, appId, appName, onClose }
             <Fab
               isFullscreen={isFullscreen}
               onToggleFullscreen={() => setIsFullscreen(!isFullscreen)}
+              appId={appId}
+              onRate={() => {
+                // Refresh the app to show updated rating
+                const iframe = document.getElementById('miniAppIframe') as HTMLIFrameElement;
+                if (iframe) {
+                  iframe.src = iframe.src;
+                }
+              }}
             />
           </div>
         </div>

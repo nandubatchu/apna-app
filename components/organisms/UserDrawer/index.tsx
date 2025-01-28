@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react'
 import { Sheet, SheetContent, SheetTrigger } from '../../ui/sheet'
 import { Button } from '../../ui/button'
-import { User, Settings, MessageSquare } from 'lucide-react'
+import { User, Settings, MessageSquare, Layout } from 'lucide-react'
 import Link from 'next/link'
 import { getKeyPairFromLocalStorage } from '../../../lib/utils'
 
@@ -36,6 +36,12 @@ export default function UserDrawer() {
               )}
             </div>
             <nav className="space-y-2">
+              <Link href="/my-apps" onClick={() => setOpen(false)}>
+                <Button variant="ghost" className="w-full justify-start hover:bg-[#e6efe9]">
+                  <Layout className="w-5 h-5 mr-2 text-[#368564]" />
+                  <span className="text-gray-700">My Apps</span>
+                </Button>
+              </Link>
               <Link href="/settings" onClick={() => setOpen(false)}>
                 <Button variant="ghost" className="w-full justify-start hover:bg-[#e6efe9]">
                   <Settings className="w-5 h-5 mr-2 text-[#368564]" />

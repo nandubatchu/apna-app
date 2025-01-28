@@ -9,9 +9,10 @@ interface AppCardProps {
   app: AppDetails;
   selected: boolean;
   onSelect: (appURL: string, appId: string) => void;
+  showEditButton?: boolean;
 }
 
-export function AppCard({ app, selected, onSelect }: AppCardProps) {
+export function AppCard({ app, selected, onSelect, showEditButton }: AppCardProps) {
   const faviconUrl = getFaviconUrl(app.appURL);
 
   return (
@@ -71,12 +72,24 @@ export function AppCard({ app, selected, onSelect }: AppCardProps) {
               </div>
               <div className="mt-3 flex items-center justify-between">
                 <RatingDisplay app={app} />
-                <Button
-                  onClick={() => onSelect(app.appURL, app.id)}
-                  className="bg-[#368564] hover:bg-[#2a684d] text-white px-4 py-2 rounded-lg transition-all duration-300"
-                >
-                  Launch App
-                </Button>
+                {showEditButton ? (
+                  <Button
+                    onClick={() => onSelect(app.appURL, app.id)}
+                    className="bg-[#368564] hover:bg-[#2a684d] text-white px-4 py-2 rounded-lg transition-all duration-300 flex items-center gap-2"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
+                    </svg>
+                    Edit App
+                  </Button>
+                ) : (
+                  <Button
+                    onClick={() => onSelect(app.appURL, app.id)}
+                    className="bg-[#368564] hover:bg-[#2a684d] text-white px-4 py-2 rounded-lg transition-all duration-300"
+                  >
+                    Launch App
+                  </Button>
+                )}
               </div>
             </div>
           </div>

@@ -10,6 +10,7 @@ const nextConfig = {
     images: {
         remotePatterns: [{hostname:'*'}]
     },
+    serverActionsBodySizeLimit: '10mb'
 };
 
 // Configuration object tells the next-pwa plugin 

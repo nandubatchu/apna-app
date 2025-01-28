@@ -20,7 +20,7 @@ export default function FeedbackPage() {
   }, [])
 
   const loadFeedbacks = async () => {
-    const replies = await GetNoteReplies(ROOT_NOTE_ID)
+    const replies = await GetNoteReplies(ROOT_NOTE_ID, true)
     setFeedbacks(replies)
     
     // Load reactions for each feedback
