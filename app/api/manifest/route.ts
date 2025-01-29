@@ -22,9 +22,17 @@ export async function GET(request: Request) {
         short_name: app.name,
         url: `/?appUrl=${encodeURIComponent(app.appUrl)}&appId=${app.appId}`,
         icons: [{
-          src: getFaviconUrl(app.appUrl),
-          sizes: "16x16",
-          type: "image/x-icon"
+          // The favicon endpoint will return a PNG or fall back to default icon
+          src: `/api/favicon?appUrl=${encodeURIComponent(app.appUrl)}`,
+          sizes: "192x192",
+          type: "image/png",
+          purpose: "any"
+        }, {
+          // Also include default icon as fallback
+          src: "/icon-192x192.png",
+          sizes: "192x192",
+          type: "image/png",
+          purpose: "maskable"
         }]
       }));
     } catch (error) {
