@@ -23,9 +23,8 @@ export async function GET(request: Request) {
         url: `/?appUrl=${encodeURIComponent(app.appUrl)}&appId=${app.appId}`,
         icons: [{
           src: getFaviconUrl(app.appUrl),
-          sizes: "192x192",
-          type: "image/png",
-          purpose: "maskable"
+          sizes: "16x16",
+          type: "image/x-icon"
         }]
       }));
     } catch (error) {
