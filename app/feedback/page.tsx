@@ -8,7 +8,7 @@ import { ReplyToNote, ReactToNote, GetNoteReactions, GetNoteReplies } from '@/li
 import { revalidateTags } from '../actions/feedback'
 // import { loadFeedbacks, revalidateFeedbacks } from '../actions/feedback'
 
-const ROOT_NOTE_ID = "note1ncuh36e6plfzaucmnyy9sma2c9lv9p2rzwlrpyn5jjs9gsqpphsqc2ylzd"
+const ROOT_NOTE_ID = "9e3978eb3a0fd22ef31b9908586faac17ec2854313be30927494a05440010de0"
 
 const loadFeedbacks = async () => {
   const replies = await GetNoteReplies(ROOT_NOTE_ID, true)
