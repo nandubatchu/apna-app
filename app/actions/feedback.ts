@@ -1,42 +1,51 @@
 'use server'
 
-import { unstable_cache } from 'next/cache'
-import { GetNoteReplies, GetNoteReactions } from '@/lib/nostr'
+import { revalidateTag, unstable_cache } from 'next/cache'
+// import { GetNoteReplies, GetNoteReactions } from '@/lib/nostr'
 
-const ROOT_NOTE_ID = "note1ncuh36e6plfzaucmnyy9sma2c9lv9p2rzwlrpyn5jjs9gsqpphsqc2ylzd"
+// const ROOT_NOTE_ID = "note1ncuh36e6plfzaucmnyy9sma2c9lv9p2rzwlrpyn5jjs9gsqpphsqc2ylzd"
 
-type ReactionMap = {
-  [key: string]: {
-    upvotes: number;
-    downvotes: number;
-    userVote: string | null;
-  }
-}
+// type NostrNote = {
+//   id: string;
+//   content: string;
+//   pubkey: string;
+// }
 
-export const loadFeedbacks = unstable_cache(
-  async (userNpub: string | null = null) => {
-    const replies = await GetNoteReplies(ROOT_NOTE_ID, true)
+// type NostrReaction = {
+//   pubkey: string;
+//   content: string;
+// }
+
+// type ReactionMap = {
+//   [key: string]: NostrReaction[];
+// }
+
+// export const loadFeedbacks = unstable_cache(
+//   async () => {
+//     const replies = await GetNoteReplies(ROOT_NOTE_ID, true)
     
-    // Load reactions for each feedback
-    const reactionsMap: ReactionMap = {}
-    for (const reply of replies) {
-      const reactions = await GetNoteReactions(reply.id)
-      const upvotes = reactions.filter((r: { content: string }) => r.content === '+').length
-      const downvotes = reactions.filter((r: { content: string }) => r.content === '-').length
-      const userVote = userNpub ?
-        reactions.find((r: { pubkey: string; content: string }) => r.pubkey === userNpub)?.content || null :
-        null
-      reactionsMap[reply.id] = { upvotes, downvotes, userVote }
-    }
+//     // Load raw reactions for each feedback in parallel
+//     const reactionsMap: ReactionMap = {}
+//     const reactionPromises = replies.map(async (reply: NostrNote) => {
+//       const reactions = await GetNoteReactions(reply.id)
+//       reactionsMap[reply.id] = reactions
+//     })
+    
+//     await Promise.all(reactionPromises)
 
-    return {
-      feedbacks: replies,
-      reactions: reactionsMap
-    }
-  },
-  ['feedbacks'],
-  {
-    revalidate: 300, // Revalidate every minute
-    tags: ['feedbacks']
-  }
-)
+//     return {
+//       feedbacks: replies,
+//       reactions: reactionsMap
+//     }
+//   },
+//   ['feedbacks'],
+//   {
+//     revalidate: 86400, // Revalidate every 24 hours
+//     tags: ['feedbacks']
+//   }
+// )
+
+// Helper function to revalidate feedbacks
+export const revalidateTags = (tags: string[]): void => {
+  tags.forEach((tag) => revalidateTag(tag))
+}

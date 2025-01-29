@@ -48,10 +48,13 @@ export const fetchAllFromRelay = async (filter: Filter): Promise<NostrEvent[]> =
 
 import { PUBLIC_BASE_URL } from '@/lib/constants';
 
-export const fetchAllFromAPI = async (filter: Filter, revalidate=false) => {
+export const fetchAllFromAPI = async (filter: Filter, revalidate=false, tags: string[] = []) => {
     let url = `${PUBLIC_BASE_URL}/api/nostr/pool/get?`
     if (revalidate) {
         url = `${url}noCache=1&`
+    }
+    if (tags.length > 0) {
+        url = `${url}tags=${tags.join(",")}&`
     }
     url = `${url}query=${encodeURIComponent(JSON.stringify({
         relays: DEFAULT_RELAYS,

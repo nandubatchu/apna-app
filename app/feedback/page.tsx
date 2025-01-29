@@ -4,33 +4,77 @@ import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { MessageSquare, ThumbsUp, ThumbsDown } from 'lucide-react'
 import { getKeyPairFromLocalStorage } from '@/lib/utils'
-import { ReplyToNote, ReactToNote } from '@/lib/nostr'
-import { loadFeedbacks } from '../actions/feedback'
+import { ReplyToNote, ReactToNote, GetNoteReactions, GetNoteReplies } from '@/lib/nostr'
+import { revalidateTags } from '../actions/feedback'
+// import { loadFeedbacks, revalidateFeedbacks } from '../actions/feedback'
 
 const ROOT_NOTE_ID = "note1ncuh36e6plfzaucmnyy9sma2c9lv9p2rzwlrpyn5jjs9gsqpphsqc2ylzd"
+
+const loadFeedbacks = async () => {
+  const replies = await GetNoteReplies(ROOT_NOTE_ID, true)
+      
+      // Load raw reactions for each feedback in parallel
+      const reactionsMap: any = {}
+      const reactionPromises = replies.map(async (reply: any) => {
+        const reactions = await GetNoteReactions(reply.id)
+        reactionsMap[reply.id] = reactions
+      })
+      
+      await Promise.all(reactionPromises)
+  
+      return {
+        feedbacks: replies,
+        reactions: reactionsMap
+      }
+}
 
 export default function FeedbackPage() {
   const [keyPair, setKeyPair] = useState<{ npub: string; nsec: string } | null>(null)
   const [feedback, setFeedback] = useState('')
   const [feedbacks, setFeedbacks] = useState<any[]>([])
-  const [reactions, setReactions] = useState<{[key: string]: {upvotes: number, downvotes: number, userVote: string | null}}>({})
+  type ProcessedReactions = {
+    [key: string]: {
+      upvotes: number;
+      downvotes: number;
+      userVote: string | null;
+    }
+  }
+
+  const [reactions, setReactions] = useState<ProcessedReactions>({})
+
+  const processReactions = (rawReactions: {[key: string]: Array<{pubkey: string; content: string}>}, userNpub: string | null) => {
+    const processed: ProcessedReactions = {}
+    
+    Object.entries(rawReactions).forEach(([noteId, reactions]) => {
+      const upvotes = reactions.filter(r => r.content === '+').length
+      const downvotes = reactions.filter(r => r.content === '-').length
+      const userVote = userNpub ?
+        reactions.find(r => r.pubkey === userNpub)?.content || null :
+        null
+      
+      processed[noteId] = { upvotes, downvotes, userVote }
+    })
+    
+    return processed
+  }
 
   useEffect(() => {
     const kp = getKeyPairFromLocalStorage()
     setKeyPair(kp)
-    refreshFeedbacks(kp?.npub || null)
+    refreshFeedbacks(kp?.npub!)
   }, [])
 
   const refreshFeedbacks = async (userNpub: string | null) => {
-    const result = await loadFeedbacks(userNpub)
+    const result = await loadFeedbacks()
     setFeedbacks(result.feedbacks)
-    setReactions(result.reactions)
+    setReactions(processReactions(result.reactions, userNpub))
   }
 
   const handleSubmit = async () => {
     if (!keyPair || !feedback.trim()) return
 
     try {
+      revalidateTags([ROOT_NOTE_ID])
       await ReplyToNote(ROOT_NOTE_ID, feedback, keyPair.nsec)
       setFeedback('')
       await refreshFeedbacks(keyPair.npub)
@@ -43,6 +87,7 @@ export default function FeedbackPage() {
     if (!keyPair) return
 
     try {
+      revalidateTags([noteId])
       await ReactToNote(noteId, keyPair.nsec, vote)
       await refreshFeedbacks(keyPair.npub)
     } catch (error) {

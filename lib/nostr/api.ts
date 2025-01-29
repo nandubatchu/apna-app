@@ -174,7 +174,7 @@ export const GetNoteReplies = async (noteId: string, direct: boolean = false) =>
     const replies = await fetchAllFromAPI({
         kinds: [1],
         "#e": [noteIdRaw]
-    });
+    }, false, [noteIdRaw]);
 
     if (direct) {
         // Filter for direct replies only - where the last "e" tag marked "reply" matches the note ID
@@ -216,7 +216,7 @@ export const GetNpubProfileMetadata = async (npub: string) => {
     const metadataContent = await fetchAllFromAPI({
         kinds: [0],
         authors: [pubkey]
-    })
+    }, false, [pubkey])
     return JSON.parse(metadataContent[0].content || {})
 }
 
@@ -242,8 +242,8 @@ const getFollowers = async (npub: string): Promise<string[]> => {
         kinds: [3],
         "#p": [pubkey]
     }
-    const followers = await fetchAllFromRelay(filter)
-    return followers.map((e) => e.pubkey)
+    const followers = await fetchAllFromAPI(filter, false, [pubkey])
+    return followers.map((e: any) => e.pubkey)
 }
 
 export const GetNpubProfile = async (npub: string) => {
@@ -265,7 +265,7 @@ export const GetNoteReactions = async (noteId: string, revalidate: boolean=false
     return fetchAllFromAPI({
         kinds: [7],
         "#e": [noteIdRaw],
-    }, revalidate)
+    }, revalidate, [noteIdRaw])
 }
 
 export const GetFeed = async (npub: string, feedType: string, since?: number, until?: number, limit?: number) => {
