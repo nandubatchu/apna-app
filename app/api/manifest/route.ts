@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { getFaviconUrl } from '@/lib/utils';
 
 interface FavoriteApp {
   name: string;
@@ -21,7 +22,7 @@ export async function GET(request: Request) {
         short_name: app.name,
         url: `/?appUrl=${encodeURIComponent(app.appUrl)}&appId=${app.appId}`,
         icons: [{
-          src: "/icon-192x192.png",
+          src: getFaviconUrl(app.appUrl),
           sizes: "192x192",
           type: "image/png",
           purpose: "maskable"
