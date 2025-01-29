@@ -27,6 +27,7 @@ import { ReplyToNote } from "@/lib/nostr"
 import { getKeyPairFromLocalStorage } from "@/lib/utils"
 import { APP_CATEGORIES, AppCategory, AppDetails } from "@/lib/types/apps"
 import { Pencil } from "lucide-react"
+import { revalidateTags } from "@/app/actions/feedback"
 
 const FormSchema = z.object({
   appName: z.string().min(2, {
@@ -103,6 +104,7 @@ export default function EditApp({ app, onSuccess }: EditAppProps) {
       }
 
       // Reply to the app's note ID instead of the original submission note
+      revalidateTags([app.id]);
       await ReplyToNote(
         app.id, // Use the app's note ID for the reply
         JSON.stringify(submitData),

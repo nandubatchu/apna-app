@@ -63,7 +63,7 @@ export async function fetchAppListAction(revalidate = false): Promise<AppDetails
     return unstable_cache(
         async () => {
             const appList: AppDetails[] = [];
-            const APP_REPLIES_NOTE = "note187j8dxwta5zvxle446uqutxue764q79vxmtv85dw7fnujlqgdm2qm7kelc"
+            const APP_REPLIES_NOTE = "3fa47699cbed04c37f35aeb80e2cdccfb55078ac36d6c3d1aef267c97c086ed4"
             const replyEvents = await GetNoteReplies(APP_REPLIES_NOTE, true) as NostrEvent[];
             const authorMetadataCache: Record<string, any> = {};
 
