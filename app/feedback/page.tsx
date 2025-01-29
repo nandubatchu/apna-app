@@ -4,7 +4,8 @@ import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { MessageSquare, ThumbsUp, ThumbsDown } from 'lucide-react'
 import { getKeyPairFromLocalStorage } from '@/lib/utils'
-import { ReplyToNote, ReactToNote, GetNoteReplies, GetNoteReactions } from '@/lib/nostr'
+import { ReplyToNote, ReactToNote } from '@/lib/nostr'
+import { loadFeedbacks } from '../actions/feedback'
 
 const ROOT_NOTE_ID = "note1ncuh36e6plfzaucmnyy9sma2c9lv9p2rzwlrpyn5jjs9gsqpphsqc2ylzd"
 
@@ -15,26 +16,15 @@ export default function FeedbackPage() {
   const [reactions, setReactions] = useState<{[key: string]: {upvotes: number, downvotes: number, userVote: string | null}}>({})
 
   useEffect(() => {
-    setKeyPair(getKeyPairFromLocalStorage())
-    loadFeedbacks()
+    const kp = getKeyPairFromLocalStorage()
+    setKeyPair(kp)
+    refreshFeedbacks(kp?.npub || null)
   }, [])
 
-  const loadFeedbacks = async () => {
-    const replies = await GetNoteReplies(ROOT_NOTE_ID, true)
-    setFeedbacks(replies)
-    
-    // Load reactions for each feedback
-    const reactionsMap: {[key: string]: {upvotes: number, downvotes: number, userVote: string | null}} = {}
-    for (const reply of replies) {
-      const reactions = await GetNoteReactions(reply.id)
-      const upvotes = reactions.filter((r: { content: string }) => r.content === '+').length
-      const downvotes = reactions.filter((r: { content: string }) => r.content === '-').length
-      const userVote = keyPair ?
-        reactions.find((r: { pubkey: string; content: string }) => r.pubkey === keyPair.npub)?.content || null :
-        null
-      reactionsMap[reply.id] = { upvotes, downvotes, userVote }
-    }
-    setReactions(reactionsMap)
+  const refreshFeedbacks = async (userNpub: string | null) => {
+    const result = await loadFeedbacks(userNpub)
+    setFeedbacks(result.feedbacks)
+    setReactions(result.reactions)
   }
 
   const handleSubmit = async () => {
@@ -43,7 +33,7 @@ export default function FeedbackPage() {
     try {
       await ReplyToNote(ROOT_NOTE_ID, feedback, keyPair.nsec)
       setFeedback('')
-      await loadFeedbacks()
+      await refreshFeedbacks(keyPair.npub)
     } catch (error) {
       console.error('Error submitting feedback:', error)
     }
@@ -54,7 +44,7 @@ export default function FeedbackPage() {
 
     try {
       await ReactToNote(noteId, keyPair.nsec, vote)
-      await loadFeedbacks()
+      await refreshFeedbacks(keyPair.npub)
     } catch (error) {
       console.error('Error voting:', error)
     }
