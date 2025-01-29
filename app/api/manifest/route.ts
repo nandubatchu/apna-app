@@ -27,12 +27,6 @@ export async function GET(request: Request) {
           sizes: "192x192",
           type: "image/png",
           purpose: "any"
-        }, {
-          // Also include default icon as fallback
-          src: "/icon-192x192.png",
-          sizes: "192x192",
-          type: "image/png",
-          purpose: "maskable"
         }]
       }));
     } catch (error) {
