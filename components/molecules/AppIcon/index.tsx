@@ -10,14 +10,35 @@ interface AppIconProps {
 
 export function AppIcon({ appName, appURL, appId, onSelect }: AppIconProps) {
   const faviconUrl = getFaviconUrl(appURL);
-  const trimmedName = appName.length > 12 ? `${appName.slice(0, 12)}...` : appName;
+  
+  // Trim text to roughly fit two lines (about 24 characters)
+  const trimText = (text: string) => {
+    if (text.length <= 24) return text;
+    
+    const words = text.split(' ');
+    let result = '';
+    let currentLength = 0;
+    
+    for (const word of words) {
+      if (currentLength + word.length + 1 <= 24) {
+        result += (result ? ' ' : '') + word;
+        currentLength += word.length + 1;
+      } else {
+        break;
+      }
+    }
+    
+    return result + (result.length < appName.length ? '...' : '');
+  };
+
+  const displayName = trimText(appName);
 
   return (
     <button
       onClick={() => onSelect?.(appURL, appId)}
-      className="flex flex-col items-center gap-2 w-20"
+      className="flex flex-col items-center gap-1 w-16"
     >
-      <div className="w-16 h-16 rounded-2xl overflow-hidden flex items-center justify-center bg-white shadow-sm">
+      <div className="w-8 h-8 flex items-center justify-center">
         {faviconUrl ? (
           <img 
             src={faviconUrl} 
@@ -27,19 +48,19 @@ export function AppIcon({ appName, appURL, appId, onSelect }: AppIconProps) {
               const target = e.currentTarget;
               const parent = target.parentElement;
               if (parent) {
-                parent.className = "w-16 h-16 rounded-2xl overflow-hidden bg-[#e6efe9] flex items-center justify-center";
-                parent.innerHTML = `<div class="w-full h-full flex items-center justify-center text-[#368564] text-2xl font-semibold">${appName.charAt(0).toUpperCase()}</div>`;
+                parent.className = "w-8 h-8 flex items-center justify-center text-[#368564]";
+                parent.innerHTML = `<div class="w-full h-full flex items-center justify-center text-xl font-semibold">${appName.charAt(0).toUpperCase()}</div>`;
               }
             }}
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center text-[#368564] text-2xl font-semibold">
+          <div className="w-full h-full flex items-center justify-center text-[#368564] text-xl font-semibold">
             {appName.charAt(0).toUpperCase()}
           </div>
         )}
       </div>
-      <span className="text-sm text-gray-700 text-center">
-        {trimmedName}
+      <span className="text-xs text-gray-700 text-center w-16 min-h-[2.5rem] whitespace-pre-wrap">
+        {displayName}
       </span>
     </button>
   );
