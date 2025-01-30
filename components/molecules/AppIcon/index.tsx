@@ -38,7 +38,7 @@ export function AppIcon({ appName, appURL, appId, onSelect }: AppIconProps) {
       onClick={() => onSelect?.(appURL, appId)}
       className="flex flex-col items-center gap-1 w-16"
     >
-      <div className="w-8 h-8 flex items-center justify-center">
+      <div className="w-10 h-10 flex items-center justify-center">
         {faviconUrl ? (
           <img 
             src={faviconUrl} 
@@ -48,7 +48,7 @@ export function AppIcon({ appName, appURL, appId, onSelect }: AppIconProps) {
               const target = e.currentTarget;
               const parent = target.parentElement;
               if (parent) {
-                parent.className = "w-8 h-8 flex items-center justify-center text-[#368564]";
+                parent.className = "w-10 h-10 flex items-center justify-center text-[#368564]";
                 parent.innerHTML = `<div class="w-full h-full flex items-center justify-center text-xl font-semibold">${appName.charAt(0).toUpperCase()}</div>`;
               }
             }}
