@@ -27,6 +27,7 @@ import { ReplyToNote } from "@/lib/nostr"
 import { getKeyPairFromLocalStorage } from "@/lib/utils"
 import { APP_CATEGORIES, AppCategory } from "@/lib/hooks/useApps"
 import { revalidateTags } from "@/app/actions/feedback"
+import { APPS_ROOT_NOTE_ID } from "@/lib/constants"
 
 const FormSchema = z.object({
   appName: z.string().min(2, {
@@ -96,10 +97,9 @@ export default function SubmitNewApp() {
         console.error('No keypair found');
         return;
       }
-      const ROOT_NOTE_ID = "3fa47699cbed04c37f35aeb80e2cdccfb55078ac36d6c3d1aef267c97c086ed4"
-      revalidateTags([ROOT_NOTE_ID])
+      revalidateTags([APPS_ROOT_NOTE_ID])
       await ReplyToNote(
-        ROOT_NOTE_ID,
+        APPS_ROOT_NOTE_ID,
         JSON.stringify(submitData),
         existingKeyPair.nsec
       );

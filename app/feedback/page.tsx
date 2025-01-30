@@ -8,10 +8,10 @@ import { ReplyToNote, ReactToNote, GetNoteReactions, GetNoteReplies } from '@/li
 import { revalidateTags } from '../actions/feedback'
 // import { loadFeedbacks, revalidateFeedbacks } from '../actions/feedback'
 
-const ROOT_NOTE_ID = "9e3978eb3a0fd22ef31b9908586faac17ec2854313be30927494a05440010de0"
+import { FEEDBACK_ROOT_NOTE_ID } from '@/lib/constants'
 
 const loadFeedbacks = async () => {
-  const replies = await GetNoteReplies(ROOT_NOTE_ID, true)
+  const replies = await GetNoteReplies(FEEDBACK_ROOT_NOTE_ID, true)
       
       // Load raw reactions for each feedback in parallel
       const reactionsMap: any = {}
@@ -74,8 +74,8 @@ export default function FeedbackPage() {
     if (!keyPair || !feedback.trim()) return
 
     try {
-      revalidateTags([ROOT_NOTE_ID])
-      await ReplyToNote(ROOT_NOTE_ID, feedback, keyPair.nsec)
+      revalidateTags([FEEDBACK_ROOT_NOTE_ID])
+      await ReplyToNote(FEEDBACK_ROOT_NOTE_ID, feedback, keyPair.nsec)
       setFeedback('')
       await refreshFeedbacks(keyPair.npub)
     } catch (error) {

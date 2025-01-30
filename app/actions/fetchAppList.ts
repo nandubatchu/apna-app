@@ -4,6 +4,7 @@ import { unstable_cache } from 'next/cache';
 import { GetNoteReactions, GetNoteReplies, GetNpubProfileMetadata } from '@/lib/nostr';
 import { Event as NostrEvent } from 'nostr-tools';
 import { AppDetails, APP_CATEGORIES, ProcessedAppEvent, AppCategory } from '@/lib/types/apps';
+import { APPS_ROOT_NOTE_ID } from '@/lib/constants';
 
 interface AppDetailsJSON {
     appURL: string;
@@ -63,8 +64,7 @@ export async function fetchAppListAction(revalidate = false): Promise<AppDetails
     return unstable_cache(
         async () => {
             const appList: AppDetails[] = [];
-            const APP_REPLIES_NOTE = "3fa47699cbed04c37f35aeb80e2cdccfb55078ac36d6c3d1aef267c97c086ed4"
-            const replyEvents = await GetNoteReplies(APP_REPLIES_NOTE, true) as NostrEvent[];
+            const replyEvents = await GetNoteReplies(APPS_ROOT_NOTE_ID, true) as NostrEvent[];
             const authorMetadataCache: Record<string, any> = {};
 
             // First, process all app submission events
