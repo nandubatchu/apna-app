@@ -145,6 +145,7 @@ export default function MiniAppModal({ isOpen, appUrl, appId, appName, onClose }
                   iframe.src = iframe.src;
                 }
               }}
+              onClose={onClose}
             />
           </div>
         </div>

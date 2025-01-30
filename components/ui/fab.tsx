@@ -7,7 +7,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Expand, Star } from "lucide-react"
+import { Expand, Star, X } from "lucide-react"
 import Image from "next/image"
 import { motion, useMotionValue, useTransform, useSpring } from "framer-motion"
 import { useEffect, useRef, useState, ChangeEvent } from "react"
@@ -29,9 +29,10 @@ interface FabProps {
   isFullscreen: boolean;
   appId?: string;
   onRate?: () => void;
+  onClose?: () => void;
 }
 
-export function Fab({ onToggleFullscreen, isFullscreen, appId, onRate }: FabProps) {
+export function Fab({ onToggleFullscreen, isFullscreen, appId, onRate, onClose }: FabProps) {
   const fabRef = useRef<HTMLDivElement>(null)
   const x = useMotionValue(0)
   const y = useMotionValue(0)
@@ -213,6 +214,12 @@ export function Fab({ onToggleFullscreen, isFullscreen, appId, onRate }: FabProp
             <Expand className="mr-2 h-4 w-4" />
             {isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}
           </DropdownMenuItem>
+          {onClose && (
+            <DropdownMenuItem onClick={onClose}>
+              <X className="mr-2 h-4 w-4" />
+              Exit App
+            </DropdownMenuItem>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
     </MotionDiv>
