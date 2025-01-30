@@ -18,7 +18,21 @@ function HomeContent() {
     url: string;
     id: string;
     name: string;
-  } | null>(null);
+  } | null>(() => {
+    // Initialize from query params if they exist
+    const appUrl = searchParams.get('appUrl');
+    const appId = searchParams.get('appId');
+    if (appUrl && appId) {
+      // Try to find app name from favorites or featured apps
+      const app = [...favoriteApps, ...FEATURED_APPS].find(a => a.id === appId);
+      return {
+        url: appUrl,
+        id: appId,
+        name: app?.appName || ''
+      };
+    }
+    return null;
+  });
 
   const handleAppSelect = (appURL: string, appId: string, appName: string) => {
     // Update URL with query params
