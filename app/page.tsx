@@ -1,5 +1,5 @@
 "use client"
-import { useState } from 'react';
+import { useState, Suspense } from 'react';
 import { useProfile } from "@/lib/hooks/useProfile";
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useFavorites } from '@/lib/hooks/useFavorites';
@@ -9,7 +9,7 @@ import MiniAppModal from "@/components/organisms/MiniAppModal";
 import BottomNav from "@/components/organisms/BottomNav";
 import type { AppDetails } from '@/lib/hooks/useApps';
 
-export default function HomePage() {
+function HomeContent() {
   const { loading: profileLoading, error: profileError } = useProfile();
   const { favoriteApps } = useFavorites();
   const searchParams = useSearchParams();
@@ -91,5 +91,17 @@ export default function HomePage() {
       
       <BottomNav />
     </>
+  );
+}
+
+export default function HomePage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-[100dvh] bg-[#f8faf9] flex items-center justify-center">
+        <p className="text-gray-600">Loading...</p>
+      </div>
+    }>
+      <HomeContent />
+    </Suspense>
   );
 }
