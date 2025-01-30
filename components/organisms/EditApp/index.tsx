@@ -104,7 +104,7 @@ export default function EditApp({ app, onSuccess }: EditAppProps) {
       }
 
       // Reply to the app's note ID instead of the original submission note
-      revalidateTags([app.id]);
+      revalidateTags(['ApnaMiniAppDetails', app.id]);
       await ReplyToNote(
         app.id, // Use the app's note ID for the reply
         JSON.stringify(submitData),

@@ -97,7 +97,7 @@ export default function SubmitNewApp() {
         console.error('No keypair found');
         return;
       }
-      revalidateTags([APPS_ROOT_NOTE_ID])
+      revalidateTags(['ApnaMiniAppDetails', APPS_ROOT_NOTE_ID])
       await ReplyToNote(
         APPS_ROOT_NOTE_ID,
         JSON.stringify(submitData),
