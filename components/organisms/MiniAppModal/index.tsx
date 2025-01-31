@@ -132,6 +132,7 @@ export default function MiniAppModal({ isOpen, appUrl, appId, appName, onClose }
                 }}
                 height="100%"
                 width="100%"
+                allow="camera"
               />
             )}
             <Fab
