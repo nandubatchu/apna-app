@@ -7,7 +7,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Expand, Star, X } from "lucide-react"
+import { Expand, Star, X, Edit } from "lucide-react"
 import Image from "next/image"
 import { motion, useMotionValue, useTransform, useSpring } from "framer-motion"
 import { useEffect, useRef, useState, ChangeEvent } from "react"
@@ -25,6 +25,7 @@ const MotionDiv = motion.div
 const FAB_SIZE = 48 // Reduced size by ~15%
 
 interface FabProps {
+  onToggleHighlight: () => void;
   onToggleFullscreen: () => void;
   isFullscreen: boolean;
   appId?: string;
@@ -32,7 +33,7 @@ interface FabProps {
   onClose?: () => void;
 }
 
-export function Fab({ onToggleFullscreen, isFullscreen, appId, onRate, onClose }: FabProps) {
+export function Fab({ onToggleHighlight, onToggleFullscreen, isFullscreen, appId, onRate, onClose }: FabProps) {
   const fabRef = useRef<HTMLDivElement>(null)
   const x = useMotionValue(0)
   const y = useMotionValue(0)
@@ -220,6 +221,10 @@ export function Fab({ onToggleFullscreen, isFullscreen, appId, onRate, onClose }
               Exit App
             </DropdownMenuItem>
           )}
+          <DropdownMenuItem onClick={onToggleHighlight}>
+            <Edit className="mr-2 h-4 w-4" />
+            Customise Mode
+          </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
     </MotionDiv>
