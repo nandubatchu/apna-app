@@ -9,6 +9,7 @@ import { FollowNpub, UnfollowNpub, PublishNote, UpdateProfile, SubscribeToFeed,
   SubscribeToNotifications, RepostNote, ReactToNote, ReplyToNote, GetNpubProfile, 
   GetNpubProfileMetadata, GetNote, GetNoteReplies, GetFeed } from "@/lib/nostr";
 import { getKeyPairFromLocalStorage } from "@/lib/utils";
+import { ApnaHost } from '@apna/sdk';
 
 // Method handlers from the original mini-app page
 const methodHandlers: IHostMethodHandlers = {
@@ -90,6 +91,7 @@ interface MiniAppModalProps {
 }
 
 export default function MiniAppModal({ isOpen, appUrl, appId, appName, onClose }: MiniAppModalProps) {
+  const [apnaHost, setApnaHost] = useState<ApnaHost>();
   const [isFullscreen, setIsFullscreen] = useState(true);
 
   useEffect(() => {
@@ -102,6 +104,9 @@ export default function MiniAppModal({ isOpen, appUrl, appId, appName, onClose }
         const apna = new ApnaHost({
           methodHandlers
         })
+        // @ts-ignore
+        window.apna = apna
+        setApnaHost(apna)
       }
       init()
     }
@@ -145,6 +150,9 @@ export default function MiniAppModal({ isOpen, appUrl, appId, appName, onClose }
                 if (iframe) {
                   iframe.src = iframe.src;
                 }
+              }}
+              onToggleHighlight={() => {
+                apnaHost?.sendMessage(document.getElementById('miniAppIframe'), "superapp:message", {type: "customise:toggleHighlight"})
               }}
               onClose={onClose}
             />
