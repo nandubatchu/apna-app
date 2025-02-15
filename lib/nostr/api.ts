@@ -198,10 +198,10 @@ export const GetNoteZaps = async (noteId: string) => {
 
 const getNprofile = async (npub: string) => {
     const pubkey = npub.includes("npub") ? nip19.decode(npub).data as string : npub
-    const config = await fetchFromRelay({
+    const config = await fetchAllFromAPI({
         kinds: [3],
         authors: [pubkey]
-    })
+    }, undefined, undefined, true)
    
     let relays = DEFAULT_RELAYS
     if (config) {
@@ -229,10 +229,10 @@ export const GetNote = async (noteId: string) => {
 
 const getFollowing = async (npub: string): Promise<string[]> => {
     const pubkey = npub.includes("npub") ? nip19.decode(npub).data as string : npub
-    const following = await fetchFromRelay({
+    const following = await fetchAllFromAPI({
         kinds: [3],
         authors: [pubkey]
-    })
+    }, undefined, undefined, true)
     return following ? filterTagValues(following.tags, "p") : []
 }   
 
