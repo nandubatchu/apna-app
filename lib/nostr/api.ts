@@ -116,10 +116,12 @@ export const ReplyToNote = async (noteId: string, content: string, nsec: string)
 
 export const UpdateProfile = async (profileMetadata: any, nsec: string) => {
     const npub = getPublicKey(nip19.decode(nsec).data as Uint8Array)
-    const nprofile = await getNprofile(npub)
-    const metadata = JSON.parse((await publishKind0(nsec, profileMetadata) as any).content)
-    const following = await getFollowing(npub)
-    const followers = await getFollowers(npub)
+    const [ nprofile, metadata, following, followers ] = await Promise.all([
+        getNprofile(npub),
+        publishKind0(nsec, profileMetadata).then((event) => JSON.parse(event.content)),
+        getFollowing(npub),
+        getFollowers(npub)
+    ]);
     
     return {
         nprofile,
@@ -247,11 +249,13 @@ const getFollowers = async (npub: string): Promise<string[]> => {
 }
 
 export const GetNpubProfile = async (npub: string) => {
-    const nprofile = await getNprofile(npub)
-    const metadata = await GetNpubProfileMetadata(npub)
-    const following = await getFollowing(npub)
-    const followers = await getFollowers(npub)
-    
+    const [ nprofile, metadata, following, followers ] = await Promise.all([
+        getNprofile(npub),
+        GetNpubProfileMetadata(npub),
+        getFollowing(npub),
+        getFollowers(npub)
+    ]);
+
     return {
         nprofile,
         metadata,
