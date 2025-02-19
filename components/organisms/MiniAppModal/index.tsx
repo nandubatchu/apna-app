@@ -40,10 +40,11 @@ const methodHandlers: IHostMethodHandlers = {
       return GetNote(noteId)
     },
     async fetchNoteAndReplies(noteId, returnReactions) {
-      return {
-        note: await GetNote(noteId),
-        replyNotes: await GetNoteReplies(noteId)
-      }
+      const [ note, replyNotes ] = await Promise.all([
+        GetNote(noteId),
+        GetNoteReplies(noteId)
+      ]);
+      return { note, replyNotes }
     },
     publishNote(content) {
       const existingKeyPair = getKeyPairFromLocalStorage();
