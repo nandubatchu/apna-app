@@ -224,9 +224,9 @@ export const GetNpubProfileMetadata = async (npub: string) => {
 
 export const GetNote = async (noteId: string) => {
     const noteIdRaw = noteId.includes("note1") ? nip19.decode(noteId).data as string : noteId
-    return (await fetchFromRelay({
+    return (await fetchAllFromAPI({
         ids: [noteIdRaw]
-    })) as NostrEvent & {kind: 1}
+    }, undefined, undefined, true)) as NostrEvent & {kind: 1}
 }
 
 const getFollowing = async (npub: string): Promise<string[]> => {
