@@ -1,6 +1,6 @@
 import { Event as NostrEvent, Filter, getPublicKey } from 'nostr-tools'
 import * as nip19 from 'nostr-tools/nip19'
-import { fetchFromRelay, fetchAllFromRelay, fetchAllFromAPI, subscribeToEvents, filterTagValues, DEFAULT_RELAYS, pool } from './core'
+import { fetchAllFromAPI, subscribeToEvents, filterTagValues, DEFAULT_RELAYS, pool } from './core'
 import { publishKind0, publishKind1, publishKind3, publishKind6, publishKind7, GenerateKeyPair } from './events'
 import * as crypto from 'crypto'
 
@@ -28,10 +28,10 @@ export const InitialiseProfile = async (nsec: string) => {
 
 export const FollowNpub = async (npub: string, nsec: string) => {
     const pubkey = npub.includes("npub") ? nip19.decode(npub).data as string : npub
-    const existingContacts = await fetchFromRelay({
+    const existingContacts = await fetchAllFromAPI({
         kinds: [3],
         authors: [getPublicKey(nip19.decode(nsec).data as Uint8Array)]
-    })
+    }, undefined, undefined, true)
     console.log(existingContacts)
     let newTags = []
     if (existingContacts) {
@@ -47,15 +47,15 @@ export const FollowNpub = async (npub: string, nsec: string) => {
 }
 
 export const UnfollowNpub = async (npub: string, nsec: string) => {
-    const existingContacts = await fetchFromRelay({
+    const existingContacts = await fetchAllFromAPI({
         kinds: [3],
         authors: [getPublicKey(nip19.decode(nsec).data as Uint8Array)]
-    })
+    }, undefined, undefined, true)
     console.log(existingContacts)
     if (!existingContacts) {
         return
     } 
-    const newTags = existingContacts.tags.filter(item => item[1] !== nip19.decode(npub).data as string);
+    const newTags = existingContacts.tags.filter((item: string[]) => item[1] !== nip19.decode(npub).data as string);
     
     return publishKind3(nsec, newTags)
 }
@@ -66,9 +66,9 @@ export const PublishNote = async (content: any, nsec: string) => {
 
 export const RepostNote = async (noteId: string, quoteContent: string, nsec: string) => {
     const noteIdRaw = noteId.includes("note1") ? nip19.decode(noteId).data as string : noteId
-    const note: any = await fetchFromRelay({
+    const note: any = await fetchAllFromAPI({
         ids: [noteIdRaw]
-    })
+    }, undefined, undefined, true)
 
     if (quoteContent) {
         const content = quoteContent
@@ -90,9 +90,9 @@ export const RepostNote = async (noteId: string, quoteContent: string, nsec: str
 
 export const ReactToNote = async (noteId: string, nsec: string, content: string = "+") => {
     const noteIdRaw = noteId.includes("note1") ? nip19.decode(noteId).data as string : noteId
-    const note: any = await fetchFromRelay({
+    const note: any = await fetchAllFromAPI({
         ids: [noteIdRaw]
-    })
+    }, undefined, undefined, true)
     const tags = [
         ['e', note.id],
         ['p', note.pubkey],
@@ -102,9 +102,9 @@ export const ReactToNote = async (noteId: string, nsec: string, content: string 
 
 export const ReplyToNote = async (noteId: string, content: string, nsec: string) => {
     const noteIdRaw = noteId.includes("note1") ? nip19.decode(noteId).data as string : noteId
-    const note: any = await fetchFromRelay({
+    const note: any = await fetchAllFromAPI({
         ids: [noteIdRaw]
-    })
+    }, undefined, undefined, true)
     const eTags: string[][] = note.tags.filter((t: string[]) => t[0] === "e");
     const tags = [
         ...eTags,
@@ -136,10 +136,10 @@ export const SubscribeToFeed = async (npub: string, feedType: string, callback: 
     
     switch (feedType) {
         case "FOLLOWING_FEED": {
-            const existingContacts = await fetchFromRelay({
+            const existingContacts = await fetchAllFromAPI({
                 kinds: [3],
                 authors: [pubkey]
-            })
+            }, undefined, undefined, true)
             console.log(existingContacts)
             if (!existingContacts) {
                 return
@@ -195,7 +195,7 @@ export const GetNoteZaps = async (noteId: string) => {
         kinds: [9735],
         "#e": [noteIdRaw]
     }
-    return (await fetchAllFromRelay(filter)) as (NostrEvent & {kind:9735})[]
+    return (await fetchAllFromAPI(filter)) as (NostrEvent & {kind:9735})[]
 }
 
 const getNprofile = async (npub: string) => {
@@ -283,10 +283,10 @@ export const GetFeed = async (npub: string, feedType: string, since?: number, un
 
     switch (feedType) {
         case "FOLLOWING_FEED": {
-            const existingContacts = await fetchFromRelay({
+            const existingContacts = await fetchAllFromAPI({
                 kinds: [3],
                 authors: [authorRaw]
-            })
+            }, undefined, undefined, true)
             if (!existingContacts) {                
                 return []
             }
