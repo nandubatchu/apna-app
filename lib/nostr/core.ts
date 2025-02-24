@@ -48,6 +48,18 @@ export const fetchAllFromRelay = async (filter: Filter): Promise<NostrEvent[]> =
 
 import { PUBLIC_BASE_URL } from '@/lib/constants';
 
+const promiseCache = new Map();
+
+// Simple hash function
+const hashCode = (str: string): string => {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+        hash = (hash << 5) - hash + str.charCodeAt(i);
+        hash |= 0; // Convert to 32bit integer
+    }
+    return hash.toString();
+};
+
 export const fetchAllFromAPI = async (filter: Filter, revalidate=false, tags: string[] = [], isSingleEvent: boolean = false) => {
     let url = `${PUBLIC_BASE_URL}/api/nostr/pool/get?`
     if (isSingleEvent) {
@@ -63,7 +75,24 @@ export const fetchAllFromAPI = async (filter: Filter, revalidate=false, tags: st
         relays: DEFAULT_RELAYS,
         filter
     }))}`
-    return fetch(url).then(res=>res.json())
+
+    const cacheKey = hashCode(url);
+
+    if (promiseCache.has(cacheKey)) {
+        console.log('## returning cached promise for', url)
+        return promiseCache.get(cacheKey);
+    }
+
+    const promise = fetch(url).then(res => res.json());
+
+    promiseCache.set(cacheKey, promise);
+    console.log('## caching promise for', url)
+    setTimeout(() => {
+        promiseCache.delete(cacheKey);
+        console.log('## removing cached promise for', url)
+    }, 10000);
+
+    return promise;
 }
 
 export const subscribeToEvents = async (filter: Filter, callback: (e: NostrEvent) => void) => {
