@@ -5,10 +5,16 @@ import TopBar from "@/components/organisms/TopBar";
 import { useEffect, useState } from "react";
 import { Fab } from "@/components/ui/fab";
 import { IHostMethodHandlers } from "@apna/sdk";
-import { FollowNpub, UnfollowNpub, PublishNote, UpdateProfile, SubscribeToFeed, 
-  SubscribeToNotifications, RepostNote, ReactToNote, ReplyToNote, GetNpubProfile, 
+import { FollowNpub, UnfollowNpub, PublishNote, UpdateProfile, SubscribeToFeed,
+  SubscribeToNotifications, RepostNote, ReactToNote, ReplyToNote, GetNpubProfile,
   GetNpubProfileMetadata, GetNote, GetNoteReplies, GetFeed } from "@/lib/nostr";
-import { getKeyPairFromLocalStorage } from "@/lib/utils";
+import {
+  getKeyPairFromLocalStorage,
+  getAllUserProfilesFromLocalStorage,
+  getUserProfileByNpub,
+  setActiveUserProfile,
+  IUserKeyPair
+} from "@/lib/utils";
 import { ApnaHost } from '@apna/sdk';
 
 // Method handlers from the original mini-app page
@@ -16,25 +22,54 @@ const methodHandlers: IHostMethodHandlers = {
   nostr: {
     getActiveUserProfile() {
       const existingKeyPair = getKeyPairFromLocalStorage();
-      return GetNpubProfile(existingKeyPair!.npub)
+      // If no keypair exists, create a default one or throw an error
+      if (!existingKeyPair) {
+        throw new Error("No active user profile found");
+      }
+      return GetNpubProfile(existingKeyPair.npub);
+    },
+    getAvailableUserProfiles() {
+      const profiles = getAllUserProfilesFromLocalStorage();
+      if (profiles.length === 0) return [];
+      return Promise.all(profiles.map((profile: IUserKeyPair) => GetNpubProfile(profile.npub)));
+    },
+    switchUserProfile(npub) {
+      const profile = getUserProfileByNpub(npub);
+      if (!profile) {
+        throw new Error(`Profile with npub ${npub} not found`);
+      }
+      
+      // Set as active profile
+      setActiveUserProfile(npub);
+      
+      return GetNpubProfile(npub);
     },
     fetchUserMetadata(npub) {
       return GetNpubProfileMetadata(npub)
     },
     updateProfileMetadata(profile) {
       const existingKeyPair = getKeyPairFromLocalStorage();
-      return UpdateProfile(profile, existingKeyPair!.nsec);
+      if (!existingKeyPair) {
+        throw new Error("No active user profile found");
+      }
+      return UpdateProfile(profile, existingKeyPair.nsec);
     },
     fetchUserProfile(npub) {
       return GetNpubProfile(npub)
     },
     followUser(npub) {
       const existingKeyPair = getKeyPairFromLocalStorage();
-      return FollowNpub(npub, existingKeyPair!.nsec);
+      if (!existingKeyPair) {
+        throw new Error("No active user profile found");
+      }
+      return FollowNpub(npub, existingKeyPair.nsec);
     },
     unfollowUser(npub) {
       const existingKeyPair = getKeyPairFromLocalStorage();
-      return UnfollowNpub(npub, existingKeyPair!.nsec);
+      if (!existingKeyPair) {
+        throw new Error("No active user profile found");
+      }
+      return UnfollowNpub(npub, existingKeyPair.nsec);
     },
     fetchNote(noteId, returnReactions) {
       return GetNote(noteId)
@@ -48,37 +83,58 @@ const methodHandlers: IHostMethodHandlers = {
     },
     publishNote(content) {
       const existingKeyPair = getKeyPairFromLocalStorage();
-      return PublishNote(content, existingKeyPair!.nsec);
+      if (!existingKeyPair) {
+        throw new Error("No active user profile found");
+      }
+      return PublishNote(content, existingKeyPair.nsec);
     },
     repostNote(noteId, quoteContent) {
       const existingKeyPair = getKeyPairFromLocalStorage();
-      return RepostNote(noteId, quoteContent, existingKeyPair!.nsec);
+      if (!existingKeyPair) {
+        throw new Error("No active user profile found");
+      }
+      return RepostNote(noteId, quoteContent, existingKeyPair.nsec);
     },
     likeNote(noteId) {
       const existingKeyPair = getKeyPairFromLocalStorage();
-      return ReactToNote(noteId, existingKeyPair!.nsec);
+      if (!existingKeyPair) {
+        throw new Error("No active user profile found");
+      }
+      return ReactToNote(noteId, existingKeyPair.nsec);
     },
     replyToNote(noteId, content) {
       const existingKeyPair = getKeyPairFromLocalStorage();
-      return ReplyToNote(noteId, content, existingKeyPair!.nsec);
+      if (!existingKeyPair) {
+        throw new Error("No active user profile found");
+      }
+      return ReplyToNote(noteId, content, existingKeyPair.nsec);
     },
     subscribeToFeed(feedType, onevent, withReactions) {
       const existingKeyPair = getKeyPairFromLocalStorage();
-      return SubscribeToFeed(existingKeyPair!.npub, feedType, onevent);
+      if (!existingKeyPair) {
+        throw new Error("No active user profile found");
+      }
+      return SubscribeToFeed(existingKeyPair.npub, feedType, onevent);
     },
     subscribeToUserFeed(npub, feedType, onevent, withReactions) {
       return SubscribeToFeed(npub, feedType, onevent);
     },
     fetchFeed(feedType, since, until, limit) {
       const existingKeyPair = getKeyPairFromLocalStorage();
-      return GetFeed(existingKeyPair!.npub, feedType, since, until, limit);
+      if (!existingKeyPair) {
+        throw new Error("No active user profile found");
+      }
+      return GetFeed(existingKeyPair.npub, feedType, since, until, limit);
     },
     fetchUserFeed(npub, feedType, since, until, limit) {
       return GetFeed(npub, feedType, since, until, limit);
     },
     subscribeToUserNotifications(onevent) {
       const existingKeyPair = getKeyPairFromLocalStorage();
-      return SubscribeToNotifications(onevent, existingKeyPair!.npub);
+      if (!existingKeyPair) {
+        throw new Error("No active user profile found");
+      }
+      return SubscribeToNotifications(onevent, existingKeyPair.npub);
     }
   }
 }
