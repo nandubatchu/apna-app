@@ -269,19 +269,25 @@ export default function ImportNsecApp() {
               {profiles.map((profile) => (
                 <div
                   key={profile.npub}
-                  className={`flex items-center justify-between p-3 rounded-lg border ${
+                  className={`flex flex-col p-3 rounded-lg border ${
                     profile.npub === activeNpub
                       ? 'border-[#368564] bg-[#e6efe9]'
                       : 'border-gray-200'
                   }`}
                 >
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono text-sm">
-                      {profile.npub.slice(0, 8)}...{profile.npub.slice(-8)}
-                    </span>
-                    {profile.alias && (
-                      <span className="text-xs text-gray-600">
-                        ({profile.alias})
+                  <div className="flex items-center gap-2 mb-2">
+                    {profile.alias ? (
+                      <>
+                        <span className="text-sm font-medium">
+                          {profile.alias}
+                        </span>
+                        <span className="font-mono text-xs text-gray-600">
+                          {profile.npub.slice(0, 6)}...{profile.npub.slice(-6)}
+                        </span>
+                      </>
+                    ) : (
+                      <span className="font-mono text-sm">
+                        {profile.npub.slice(0, 8)}...{profile.npub.slice(-8)}
                       </span>
                     )}
                     {profile.npub === activeNpub && (
@@ -290,7 +296,7 @@ export default function ImportNsecApp() {
                       </span>
                     )}
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap gap-2">
                     {profile.npub !== activeNpub && (
                       <Button
                         className="py-1 px-2 text-sm border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 hover:text-gray-900"
