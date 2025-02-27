@@ -7,7 +7,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Expand, Star, X, Edit } from "lucide-react"
+import { Expand, Star, X, Edit, User } from "lucide-react"
 import Image from "next/image"
 import { motion, useMotionValue, useTransform, useSpring } from "framer-motion"
 import { useEffect, useRef, useState, ChangeEvent } from "react"
@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/dialog"
 import { ReactToNote } from "@/lib/nostr"
 import { getKeyPairFromLocalStorage } from "@/lib/utils"
+import ProfileManager from "@/components/organisms/ProfileManager"
 
 const MotionDiv = motion.div
 const FAB_SIZE = 48 // Reduced size by ~15%
@@ -47,6 +48,7 @@ export function Fab({ onToggleHighlight, onToggleFullscreen, isFullscreen, appId
   const [hoveredRating, setHoveredRating] = useState(0)
   const [feedback, setFeedback] = useState('')
   const [isOpen, setIsOpen] = useState(false)
+  const [isProfileManagerOpen, setIsProfileManagerOpen] = useState(false)
   const [keyPair, setKeyPair] = useState<{ npub: string; nsec: string } | null>(null)
 
   useEffect(() => {
@@ -211,6 +213,14 @@ export function Fab({ onToggleHighlight, onToggleFullscreen, isFullscreen, appId
               </DialogContent>
             </Dialog>
           )}
+          <DropdownMenuItem onClick={onToggleHighlight}>
+            <Edit className="mr-2 h-4 w-4" />
+            Customise Mode
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => setIsProfileManagerOpen(true)}>
+            <User className="mr-2 h-4 w-4" />
+            Switch Profile
+          </DropdownMenuItem>
           <DropdownMenuItem onClick={onToggleFullscreen}>
             <Expand className="mr-2 h-4 w-4" />
             {isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}
@@ -221,12 +231,17 @@ export function Fab({ onToggleHighlight, onToggleFullscreen, isFullscreen, appId
               Exit App
             </DropdownMenuItem>
           )}
-          <DropdownMenuItem onClick={onToggleHighlight}>
-            <Edit className="mr-2 h-4 w-4" />
-            Customise Mode
-          </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+      
+      <ProfileManager
+        open={isProfileManagerOpen}
+        onOpenChange={setIsProfileManagerOpen}
+        onProfileChange={() => {
+          // Refresh keyPair when profile changes
+          setKeyPair(getKeyPairFromLocalStorage())
+        }}
+      />
     </MotionDiv>
   )
 }
