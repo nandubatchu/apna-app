@@ -41,7 +41,8 @@ import {
   IUserKeyPair
 } from "@/lib/utils"
 import { getPublicKey, nip19 } from "nostr-tools"
-import { User, KeyRound } from "lucide-react"
+import { User, KeyRound, Shuffle } from "lucide-react"
+import { GenerateKeyPair } from "@/lib/nostr/events"
 
 const formSchema = z.object({
   nsec: z.string().startsWith("nsec", {
@@ -92,6 +93,13 @@ export default function ProfileManager({ open, onOpenChange, onProfileChange }: 
       alias: "",
     },
   })
+  
+  // Function to generate a random nsec key
+  function generateRandomNsec() {
+    // Use the project's GenerateKeyPair function
+    const keyPair = GenerateKeyPair();
+    form.setValue("nsec", keyPair.nsec);
+  }
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
@@ -395,13 +403,23 @@ export default function ProfileManager({ open, onOpenChange, onProfileChange }: 
                               <FormItem>
                                 <FormLabel className="text-gray-700">Nsec Key</FormLabel>
                                 <FormControl>
-                                  <div className="relative">
-                                    <Input
-                                      placeholder="Enter your nsec"
-                                      {...field}
-                                      className="border-gray-200 focus:border-[#368564] focus:ring-[#e6efe9] pl-10"
-                                    />
-                                    <KeyRound className="w-5 h-5 text-[#368564] absolute left-3 top-1/2 transform -translate-y-1/2" />
+                                  <div className="flex gap-2">
+                                    <div className="relative flex-grow">
+                                      <Input
+                                        placeholder="Enter your nsec"
+                                        {...field}
+                                        className="border-gray-200 focus:border-[#368564] focus:ring-[#e6efe9] pl-10 w-full"
+                                      />
+                                      <KeyRound className="w-5 h-5 text-[#368564] absolute left-3 top-1/2 transform -translate-y-1/2" />
+                                    </div>
+                                    <Button
+                                      type="button"
+                                      onClick={generateRandomNsec}
+                                      className="bg-[#368564] hover:bg-[#2a684d] text-white flex items-center gap-1 px-3"
+                                    >
+                                      <Shuffle className="w-4 h-4" />
+                                      Random
+                                    </Button>
                                   </div>
                                 </FormControl>
                                 <FormMessage className="text-red-500" />
