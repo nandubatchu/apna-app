@@ -26,96 +26,176 @@ export const InitialiseProfile = async (nsec: string) => {
     return profile
 }
 
-export const FollowNpub = async (npub: string, nsec: string) => {
-    const pubkey = npub.includes("npub") ? nip19.decode(npub).data as string : npub
+export const FollowNpub = async (npub: string, nsecOrNpub: string) => {
+    const targetPubkey = npub.includes("npub") ? nip19.decode(npub).data as string : npub
+    
+    // Determine the author pubkey based on whether nsecOrNpub is an nsec or npub
+    let authorPubkey: string;
+    if (nsecOrNpub.startsWith('npub')) {
+        const decodedNpub = nip19.decode(nsecOrNpub);
+        if (decodedNpub.type !== "npub") {
+            throw new Error("invalid npub");
+        }
+        authorPubkey = decodedNpub.data as string;
+    } else {
+        authorPubkey = getPublicKey(nip19.decode(nsecOrNpub).data as Uint8Array);
+    }
+    
     const existingContacts = await fetchAllFromAPI({
         kinds: [3],
-        authors: [getPublicKey(nip19.decode(nsec).data as Uint8Array)]
+        authors: [authorPubkey]
     }, undefined, undefined, true)
-    console.log(existingContacts)
+    
     let newTags = []
     if (existingContacts) {
-        newTags.push(...existingContacts.tags, ["p", pubkey])
+        newTags.push(...existingContacts.tags, ["p", targetPubkey])
         newTags = Array.from(
             new Set(newTags.map((item) => JSON.stringify(item)))
           ).map((json) => JSON.parse(json));
     } else {
-        newTags.push(["p", pubkey])
+        newTags.push(["p", targetPubkey])
     }
     
-    return publishKind3(nsec, newTags)
+    return publishKind3(nsecOrNpub, newTags)
 }
 
-export const UnfollowNpub = async (npub: string, nsec: string) => {
+export const UnfollowNpub = async (npub: string, nsecOrNpub: string) => {
+    // Determine the author pubkey based on whether nsecOrNpub is an nsec or npub
+    let authorPubkey: string;
+    if (nsecOrNpub.startsWith('npub')) {
+        const decodedNpub = nip19.decode(nsecOrNpub);
+        if (decodedNpub.type !== "npub") {
+            throw new Error("invalid npub");
+        }
+        authorPubkey = decodedNpub.data as string;
+    } else {
+        authorPubkey = getPublicKey(nip19.decode(nsecOrNpub).data as Uint8Array);
+    }
+    
     const existingContacts = await fetchAllFromAPI({
         kinds: [3],
-        authors: [getPublicKey(nip19.decode(nsec).data as Uint8Array)]
+        authors: [authorPubkey]
     }, undefined, undefined, true)
-    console.log(existingContacts)
+    
     if (!existingContacts) {
         return
-    } 
-    const newTags = existingContacts.tags.filter((item: string[]) => item[1] !== nip19.decode(npub).data as string);
+    }
     
-    return publishKind3(nsec, newTags)
+    const targetPubkey = npub.includes("npub") ? nip19.decode(npub).data as string : npub;
+    const newTags = existingContacts.tags.filter((item: string[]) => item[1] !== targetPubkey);
+    
+    return publishKind3(nsecOrNpub, newTags)
 }
 
-export const PublishNote = async (content: any, nsec: string) => {
-    return publishKind1(nsec, content)
+export const PublishNote = async (content: any, nsecOrNpub: string) => {
+    // Validate content to ensure it's not empty
+    if (!content || (typeof content === 'string' && content.trim() === '')) {
+        throw new Error('Note content cannot be empty')
+    }
+    
+    // Convert content to string if it's not already
+    const contentStr = typeof content === 'string' ? content : JSON.stringify(content)
+    
+    return publishKind1(nsecOrNpub, contentStr)
 }
 
-export const RepostNote = async (noteId: string, quoteContent: string, nsec: string) => {
+export const RepostNote = async (noteId: string, quoteContent: string, nsecOrNpub: string) => {
     const noteIdRaw = noteId.includes("note1") ? nip19.decode(noteId).data as string : noteId
     const note: any = await fetchAllFromAPI({
         ids: [noteIdRaw]
     }, undefined, undefined, true)
+    
+    if (!note) {
+        throw new Error(`Note with ID ${noteId} not found`);
+    }
 
     if (quoteContent) {
+        // Validate quoteContent to ensure it's not empty
+        if (quoteContent.trim() === '') {
+            throw new Error('Quote content cannot be empty')
+        }
+        
         const content = quoteContent
         const tags = [
             ['e', note.id, "", "mention"],
             ['p', note.pubkey, "", "mention"],
             ['q', note.id]
         ]
-        return publishKind1(nsec, `${content}\nnostr:${nip19.noteEncode(note.id)}`, tags)
+        return publishKind1(nsecOrNpub, `${content}\nnostr:${nip19.noteEncode(note.id)}`, tags)
     } else {
         const content = JSON.stringify(note)
         const tags = [
             ['e', note.id],
             ['p', note.pubkey],
         ]
-        return publishKind6(nsec, content, tags)
+        return publishKind6(nsecOrNpub, content, tags)
     }
 }
 
-export const ReactToNote = async (noteId: string, nsec: string, content: string = "+") => {
+export const ReactToNote = async (noteId: string, nsecOrNpub: string, content: string = "+") => {
+    // Validate content
+    if (!content || content.trim() === '') {
+        content = "+"; // Default to "+" if empty
+    }
+    
     const noteIdRaw = noteId.includes("note1") ? nip19.decode(noteId).data as string : noteId
     const note: any = await fetchAllFromAPI({
         ids: [noteIdRaw]
     }, undefined, undefined, true)
+    
+    if (!note) {
+        throw new Error(`Note with ID ${noteId} not found`);
+    }
+    
     const tags = [
         ['e', note.id],
         ['p', note.pubkey],
     ]
-    return publishKind7(nsec, tags, content)
+    return publishKind7(nsecOrNpub, tags, content)
 }
 
-export const ReplyToNote = async (noteId: string, content: string, nsec: string) => {
+export const ReplyToNote = async (noteId: string, content: string, nsecOrNpub: string) => {
+    // Validate content to ensure it's not empty
+    if (!content || content.trim() === '') {
+        throw new Error('Reply content cannot be empty')
+    }
+    
     const noteIdRaw = noteId.includes("note1") ? nip19.decode(noteId).data as string : noteId
     const note: any = await fetchAllFromAPI({
         ids: [noteIdRaw]
     }, undefined, undefined, true)
+    
+    if (!note) {
+        throw new Error(`Note with ID ${noteId} not found`);
+    }
+    
     const eTags: string[][] = note.tags.filter((t: string[]) => t[0] === "e");
     const tags = [
         ...eTags,
         ['e', note.id, "", eTags.length > 0 ? "reply" : "root"],
         ['p', note.pubkey],
     ]
-    return publishKind1(nsec, content, tags)
+    return publishKind1(nsecOrNpub, content, tags)
 }
 
 export const UpdateProfile = async (profileMetadata: any, nsec: string) => {
-    const npub = getPublicKey(nip19.decode(nsec).data as Uint8Array)
+    // Validate profileMetadata to ensure it's not empty
+    if (!profileMetadata || (typeof profileMetadata === 'object' && Object.keys(profileMetadata).length === 0)) {
+        throw new Error('Profile metadata cannot be empty')
+    }
+    
+    // If nsec is actually an npub (for remote signer), decode it differently
+    let npub: string;
+    if (nsec.startsWith('npub')) {
+        const decodedNpub = nip19.decode(nsec);
+        if (decodedNpub.type !== "npub") {
+            throw new Error("invalid npub");
+        }
+        npub = decodedNpub.data as string;
+    } else {
+        npub = getPublicKey(nip19.decode(nsec).data as Uint8Array);
+    }
+    
     const [ nprofile, metadata, following, followers ] = await Promise.all([
         getNprofile(npub),
         publishKind0(nsec, profileMetadata).then((event) => JSON.parse(event.content)),

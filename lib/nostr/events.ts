@@ -4,6 +4,8 @@ import { setNostrWasm, generateSecretKey, finalizeEvent, verifyEvent } from 'nos
 import { initNostrWasm } from 'nostr-wasm'
 import * as crypto from 'crypto'
 import { pool, DEFAULT_RELAYS } from './core'
+import { isRemoteSignerConnected, signEventWithRemoteSigner } from './nip46'
+import { isRemoteSignerProfile } from '@/lib/utils'
 
 // make sure this promise resolves before your app starts calling finalizeEvent or verifyEvent
 const initPromise = initNostrWasm().then(setNostrWasm)
@@ -32,21 +34,55 @@ export const GenerateKeyPair = () => {
     return keyPair
 }
 
-export const publishEvent = async (nsec: string, event: any) => {
-    const decodedNsec = nip19.decode(nsec);
-    if (decodedNsec.type != "nsec") {
-        throw new Error("invalid nsec");
+export const publishEvent = async (nsecOrNpub: string, event: any) => {
+    let signedEvent: VerifiedEvent;
+    
+    // Check if the input is an npub
+    if (nsecOrNpub.startsWith('npub')) {
+        const decodedNpub = nip19.decode(nsecOrNpub);
+        if (decodedNpub.type !== "npub") {
+            throw new Error("invalid npub");
+        }
+        const pubkey = decodedNpub.data as string;
+        
+        // Check if this pubkey is connected to a remote signer
+        if (isRemoteSignerConnected(pubkey)) {
+            // Use remote signer to sign the event
+            try {
+                signedEvent = await signEventWithRemoteSigner(pubkey, {
+                    ...event,
+                    pubkey
+                });
+            } catch (error) {
+                console.error('Remote signing failed:', error);
+                throw new Error(`Remote signing failed: ${error instanceof Error ? error.message : String(error)}`);
+            }
+        } else {
+            // Check if this is a remote signer profile that's not currently connected
+            if (isRemoteSignerProfile(pubkey)) {
+                throw new Error("Remote signer is not currently connected. Please reconnect to the remote signer.");
+            } else {
+                throw new Error("No remote signer connected for this npub");
+            }
+        }
+    } else {
+        // Traditional nsec signing
+        const decodedNsec = nip19.decode(nsecOrNpub);
+        if (decodedNsec.type !== "nsec") {
+            throw new Error("invalid nsec");
+        }
+        const sk = decodedNsec.data;
+        await initPromise;
+        signedEvent = finalizeEvent(event, sk)
     }
-    const sk = decodedNsec.data;
-    await initPromise;
-    let signedEvent = finalizeEvent(event, sk)
+    
     let isGood = verifyEvent(signedEvent)
     console.log(`signedEvent - ${JSON.stringify(signedEvent)}`)
     if (!isGood) {
         throw new Error("event verification failed")
     }
     const pub = await pool.publish(DEFAULT_RELAYS, signedEvent)
-    console.log(`published event - ${pub}`)
+    console.log(`published event - `, pub)
     return signedEvent
 }
 

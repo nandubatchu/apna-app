@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import * as z from "zod"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -33,6 +34,7 @@ import {
   getAllUserProfilesFromLocalStorage,
   getKeyPairFromLocalStorage,
   addUserProfileToLocalStorage,
+  addRemoteSignerProfileToLocalStorage,
   removeUserProfileFromLocalStorage,
   setActiveUserProfile,
   getUserProfileByNpub,
@@ -41,12 +43,20 @@ import {
   IUserKeyPair
 } from "@/lib/utils"
 import { getPublicKey, nip19 } from "nostr-tools"
-import { User, KeyRound, Shuffle } from "lucide-react"
+import { User, KeyRound, Shuffle, Link, AlertTriangle } from "lucide-react"
 import { GenerateKeyPair } from "@/lib/nostr/events"
+import { parseRemoteSignerInput, connectToRemoteSigner } from "@/lib/nostr/nip46"
 
-const formSchema = z.object({
+const nsecFormSchema = z.object({
   nsec: z.string().startsWith("nsec", {
     message: `Nsec is invalid! Should start with "nsec"`,
+  }),
+  alias: z.string().optional()
+})
+
+const remoteSignerFormSchema = z.object({
+  bunkerUrl: z.string().min(1, {
+    message: "Bunker URL is required",
   }),
   alias: z.string().optional()
 })
@@ -86,10 +96,22 @@ export default function ProfileManager({ open, onOpenChange, onProfileChange }: 
     }
   }, [open])
 
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
+  const [importTab, setImportTab] = useState<string>("nsec")
+  const [isConnecting, setIsConnecting] = useState(false)
+  const [authUrl, setAuthUrl] = useState<string | null>(null)
+
+  const nsecForm = useForm<z.infer<typeof nsecFormSchema>>({
+    resolver: zodResolver(nsecFormSchema),
     defaultValues: {
       nsec: "",
+      alias: "",
+    },
+  })
+
+  const remoteSignerForm = useForm<z.infer<typeof remoteSignerFormSchema>>({
+    resolver: zodResolver(remoteSignerFormSchema),
+    defaultValues: {
+      bunkerUrl: "",
       alias: "",
     },
   })
@@ -98,10 +120,10 @@ export default function ProfileManager({ open, onOpenChange, onProfileChange }: 
   function generateRandomNsec() {
     // Use the project's GenerateKeyPair function
     const keyPair = GenerateKeyPair();
-    form.setValue("nsec", keyPair.nsec);
+    nsecForm.setValue("nsec", keyPair.nsec);
   }
 
-  async function onSubmit(values: z.infer<typeof formSchema>) {
+  async function onSubmit(values: z.infer<typeof nsecFormSchema>) {
     try {
       const nsec = values.nsec
       const alias = values.alias
@@ -139,7 +161,7 @@ export default function ProfileManager({ open, onOpenChange, onProfileChange }: 
       
       // Update UI
       loadProfiles()
-      form.reset()
+      nsecForm.reset()
       setIsImportOpen(false)
       setPendingImport(null)
       setDuplicateProfile(null)
@@ -150,6 +172,58 @@ export default function ProfileManager({ open, onOpenChange, onProfileChange }: 
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to import nsec key")
+    }
+  }
+
+  async function onRemoteSignerSubmit(values: z.infer<typeof remoteSignerFormSchema>) {
+    try {
+      setIsConnecting(true)
+      setError(null)
+
+      // Parse the bunker URL
+      const bunkerPointer = await parseRemoteSignerInput(values.bunkerUrl)
+      if (!bunkerPointer) {
+        throw new Error("Invalid bunker URL or NIP-05 identifier")
+      }
+
+      // Connect to the remote signer
+      const connection = await connectToRemoteSigner(
+        bunkerPointer,
+        (url) => {
+          // Handle auth URL if needed
+          setAuthUrl(url)
+        }
+      )
+
+      if (!connection || !connection.userPubkey) {
+        throw new Error("Failed to connect to remote signer")
+      }
+
+      // Add to user profiles system
+      // connection.userPubkey is the raw pubkey, so we need to encode it as npub
+      const nip19 = require('nostr-tools/nip19');
+      const npub = nip19.npubEncode(connection.userPubkey);
+      
+      addRemoteSignerProfileToLocalStorage(
+        npub, // Pass the encoded npub
+        values.bunkerUrl,
+        true, // Set as active
+        values.alias
+      )
+
+      // Reset form and update UI
+      remoteSignerForm.reset()
+      loadProfiles()
+      setIsImportOpen(false)
+      
+      // Notify parent component if needed
+      if (onProfileChange) {
+        onProfileChange()
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to connect to remote signer")
+    } finally {
+      setIsConnecting(false)
     }
   }
 
@@ -197,6 +271,36 @@ export default function ProfileManager({ open, onOpenChange, onProfileChange }: 
           <Button
             onClick={() => setError(null)}
             className="mt-4 w-full bg-red-500 hover:bg-red-600 text-white"
+          >
+            Close
+          </Button>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Auth URL Dialog */}
+      <Dialog open={!!authUrl} onOpenChange={() => setAuthUrl(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Authentication Required</DialogTitle>
+          </DialogHeader>
+          <div className="text-gray-700 mt-2">
+            <p className="mb-4">The remote signer requires authentication. Please visit the following URL to authenticate:</p>
+            <div className="bg-gray-100 p-3 rounded-md break-all">
+              <a 
+                href={authUrl || "#"} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-blue-600 hover:underline flex items-center gap-2"
+              >
+                {authUrl}
+                <Link className="w-4 h-4" />
+              </a>
+            </div>
+            <p className="mt-4 text-sm text-gray-500">After authenticating, you&apos;ll be able to use the remote signer.</p>
+          </div>
+          <Button
+            onClick={() => setAuthUrl(null)}
+            className="mt-4 w-full bg-blue-500 hover:bg-blue-600 text-white"
           >
             Close
           </Button>
@@ -338,6 +442,11 @@ export default function ProfileManager({ open, onOpenChange, onProfileChange }: 
                               Active
                             </span>
                           )}
+                          {profile.isRemoteSigner && (
+                            <span className="text-xs bg-blue-500 text-white px-2 py-0.5 rounded-full">
+                              Remote
+                            </span>
+                          )}
                         </div>
                         <div className="flex flex-wrap gap-2">
                           {profile.npub !== activeNpub && (
@@ -348,12 +457,22 @@ export default function ProfileManager({ open, onOpenChange, onProfileChange }: 
                               Switch
                             </Button>
                           )}
-                          <Button
-                            className="py-1 px-2 text-sm border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 hover:text-gray-900"
-                            onClick={() => handleExportProfile(profile.npub)}
-                          >
-                            Export
-                          </Button>
+                          {!profile.isRemoteSigner ? (
+                            <Button
+                              className="py-1 px-2 text-sm border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 hover:text-gray-900"
+                              onClick={() => handleExportProfile(profile.npub)}
+                            >
+                              Export
+                            </Button>
+                          ) : (
+                            <Button
+                              className="py-1 px-2 text-sm border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 hover:text-gray-900 opacity-50 cursor-not-allowed"
+                              disabled
+                              title="Remote signer profiles don't have exportable private keys"
+                            >
+                              Export
+                            </Button>
+                          )}
                           {profiles.length > 1 && (
                             <Button
                               className="py-1 px-2 text-sm bg-red-500 hover:bg-red-600 text-white"
@@ -390,72 +509,166 @@ export default function ProfileManager({ open, onOpenChange, onProfileChange }: 
                         Import New Profile
                       </DrawerTitle>
                       <DrawerDescription className="text-gray-600 text-sm sm:text-base">
-                        Add a new profile using your nsec key
+                        Add a new profile using your nsec key or connect to a remote signer
                       </DrawerDescription>
                     </DrawerHeader>
-                    <Form {...form}>
-                      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 p-4 sm:p-6">
-                        <div className="space-y-4">
-                          <FormField
-                            control={form.control}
-                            name="nsec"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel className="text-gray-700">Nsec Key</FormLabel>
-                                <FormControl>
-                                  <div className="flex gap-2">
-                                    <div className="relative flex-grow">
-                                      <Input
-                                        placeholder="Enter your nsec"
-                                        {...field}
-                                        className="border-gray-200 focus:border-[#368564] focus:ring-[#e6efe9] pl-10 w-full"
-                                      />
-                                      <KeyRound className="w-5 h-5 text-[#368564] absolute left-3 top-1/2 transform -translate-y-1/2" />
-                                    </div>
-                                    <Button
-                                      type="button"
-                                      onClick={generateRandomNsec}
-                                      className="bg-[#368564] hover:bg-[#2a684d] text-white flex items-center gap-1 px-3"
-                                    >
-                                      <Shuffle className="w-4 h-4" />
-                                      Random
-                                    </Button>
-                                  </div>
-                                </FormControl>
-                                <FormMessage className="text-red-500" />
-                              </FormItem>
-                            )}
-                          />
-                          
-                          <FormField
-                            control={form.control}
-                            name="alias"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel className="text-gray-700">Alias (Optional)</FormLabel>
-                                <FormControl>
-                                  <div className="relative">
-                                    <Input
-                                      placeholder="Enter a name for this profile"
-                                      {...field}
-                                      className="border-gray-200 focus:border-[#368564] focus:ring-[#e6efe9] pl-10"
-                                    />
-                                    <User className="w-5 h-5 text-[#368564] absolute left-3 top-1/2 transform -translate-y-1/2" />
-                                  </div>
-                                </FormControl>
-                                <FormMessage className="text-red-500" />
-                              </FormItem>
-                            )}
-                          />
+                    <Tabs value={importTab} onValueChange={setImportTab} className="w-full">
+                      <TabsList className="grid w-full grid-cols-2 mb-6 mx-4 sm:mx-6 mt-4">
+                        <TabsTrigger value="nsec" className="text-center">
+                          <span className="flex items-center gap-2">
+                            <KeyRound className="w-4 h-4" />
+                            Local Key
+                          </span>
+                        </TabsTrigger>
+                        <TabsTrigger value="remote" className="text-center">
+                          <span className="flex items-center gap-2">
+                            <Link className="w-4 h-4" />
+                            Remote Signer
+                          </span>
+                        </TabsTrigger>
+                      </TabsList>
+                      
+                      <TabsContent value="nsec" className="mt-0">
+                        <div className="p-4 bg-gray-50 rounded-lg mb-4 mx-4 sm:mx-6">
+                          <div className="flex items-start gap-3">
+                            <AlertTriangle className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
+                            <p className="text-sm text-gray-700">
+                              Local keys are stored in your browser. While convenient, this means your private key is exposed to this application.
+                              For better security, consider using a remote signer.
+                            </p>
+                          </div>
                         </div>
-                        <Button
-                          type="submit"
-                          className="w-full bg-[#368564] hover:bg-[#2a684d] text-white font-semibold py-2 rounded-lg transition-all duration-300 shadow-sm hover:shadow-md"
-                        >
-                          Import Key
-                        </Button>
-                      </form>
-                    </Form>
+                        <Form {...nsecForm}>
+                          <form onSubmit={nsecForm.handleSubmit(onSubmit)} className="space-y-6 p-4 sm:p-6">
+                            <div className="space-y-4">
+                              <FormField
+                                control={nsecForm.control}
+                                name="nsec"
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel className="text-gray-700">Nsec Key</FormLabel>
+                                    <FormControl>
+                                      <div className="flex gap-2">
+                                        <div className="relative flex-grow">
+                                          <Input
+                                            placeholder="Enter your nsec"
+                                            {...field}
+                                            className="border-gray-200 focus:border-[#368564] focus:ring-[#e6efe9] pl-10 w-full"
+                                          />
+                                          <KeyRound className="w-5 h-5 text-[#368564] absolute left-3 top-1/2 transform -translate-y-1/2" />
+                                        </div>
+                                        <Button
+                                          type="button"
+                                          onClick={generateRandomNsec}
+                                          className="bg-[#368564] hover:bg-[#2a684d] text-white flex items-center gap-1 px-3"
+                                        >
+                                          <Shuffle className="w-4 h-4" />
+                                          Random
+                                        </Button>
+                                      </div>
+                                    </FormControl>
+                                    <FormMessage className="text-red-500" />
+                                  </FormItem>
+                                )}
+                              />
+                              
+                              <FormField
+                                control={nsecForm.control}
+                                name="alias"
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel className="text-gray-700">Alias (Optional)</FormLabel>
+                                    <FormControl>
+                                      <div className="relative">
+                                        <Input
+                                          placeholder="Enter a name for this profile"
+                                          {...field}
+                                          className="border-gray-200 focus:border-[#368564] focus:ring-[#e6efe9] pl-10"
+                                        />
+                                        <User className="w-5 h-5 text-[#368564] absolute left-3 top-1/2 transform -translate-y-1/2" />
+                                      </div>
+                                    </FormControl>
+                                    <FormMessage className="text-red-500" />
+                                  </FormItem>
+                                )}
+                              />
+                            </div>
+                            <Button
+                              type="submit"
+                              className="w-full bg-[#368564] hover:bg-[#2a684d] text-white font-semibold py-2 rounded-lg transition-all duration-300 shadow-sm hover:shadow-md"
+                            >
+                              Import Key
+                            </Button>
+                          </form>
+                        </Form>
+                      </TabsContent>
+                      
+                      <TabsContent value="remote" className="mt-0">
+                        <div className="p-4 bg-gray-50 rounded-lg mb-4 mx-4 sm:mx-6">
+                          <div className="flex items-start gap-3">
+                            <AlertTriangle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+                            <p className="text-sm text-gray-700">
+                              Remote signers keep your private key secure on a separate device or server. 
+                              This app will request signatures from the remote signer when needed.
+                            </p>
+                          </div>
+                        </div>
+                        <Form {...remoteSignerForm}>
+                          <form onSubmit={remoteSignerForm.handleSubmit(onRemoteSignerSubmit)} className="space-y-6 p-4 sm:p-6">
+                            <div className="space-y-4">
+                              <FormField
+                                control={remoteSignerForm.control}
+                                name="bunkerUrl"
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel className="text-gray-700">Bunker URL or NIP-05</FormLabel>
+                                    <FormControl>
+                                      <div className="relative">
+                                        <Input
+                                          placeholder="bunker://... or name@domain.com"
+                                          {...field}
+                                          className="border-gray-200 focus:border-[#368564] focus:ring-[#e6efe9] pl-10"
+                                        />
+                                        <Link className="w-5 h-5 text-[#368564] absolute left-3 top-1/2 transform -translate-y-1/2" />
+                                      </div>
+                                    </FormControl>
+                                    <FormMessage className="text-red-500" />
+                                  </FormItem>
+                                )}
+                              />
+                              
+                              <FormField
+                                control={remoteSignerForm.control}
+                                name="alias"
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel className="text-gray-700">Alias (Optional)</FormLabel>
+                                    <FormControl>
+                                      <div className="relative">
+                                        <Input
+                                          placeholder="Enter a name for this connection"
+                                          {...field}
+                                          className="border-gray-200 focus:border-[#368564] focus:ring-[#e6efe9] pl-10"
+                                        />
+                                        <User className="w-5 h-5 text-[#368564] absolute left-3 top-1/2 transform -translate-y-1/2" />
+                                      </div>
+                                    </FormControl>
+                                    <FormMessage className="text-red-500" />
+                                  </FormItem>
+                                )}
+                              />
+                            </div>
+                            <Button
+                              type="submit"
+                              className="w-full bg-[#368564] hover:bg-[#2a684d] text-white font-semibold py-2 rounded-lg transition-all duration-300 shadow-sm hover:shadow-md"
+                              disabled={isConnecting}
+                            >
+                              {isConnecting ? "Connecting..." : "Connect to Remote Signer"}
+                            </Button>
+                          </form>
+                        </Form>
+                      </TabsContent>
+                    </Tabs>
                   </div>
                 </DrawerContent>
               </Drawer>

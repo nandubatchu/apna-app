@@ -8,6 +8,7 @@ import { IHostMethodHandlers } from "@apna/sdk";
 import { FollowNpub, UnfollowNpub, PublishNote, UpdateProfile, SubscribeToFeed,
   SubscribeToNotifications, RepostNote, ReactToNote, ReplyToNote, GetNpubProfile,
   GetNpubProfileMetadata, GetNote, GetNoteReplies, GetFeed } from "@/lib/nostr";
+import { publishEvent } from "@/lib/nostr/events";
 import {
   getKeyPairFromLocalStorage,
   getAllUserProfilesFromLocalStorage,
@@ -47,12 +48,20 @@ const methodHandlers: IHostMethodHandlers = {
     fetchUserMetadata(npub) {
       return GetNpubProfileMetadata(npub)
     },
-    updateProfileMetadata(profile) {
+    async updateProfileMetadata(profile) {
       const existingKeyPair = getKeyPairFromLocalStorage();
       if (!existingKeyPair) {
         throw new Error("No active user profile found");
       }
-      return UpdateProfile(profile, existingKeyPair.nsec);
+      
+      // Use publishEvent which handles both local and remote signer profiles
+      if (existingKeyPair.isRemoteSigner) {
+        // For remote signer, use npub
+        return UpdateProfile(profile, existingKeyPair.npub);
+      } else {
+        // For local key, use nsec
+        return UpdateProfile(profile, existingKeyPair.nsec);
+      }
     },
     fetchUserProfile(npub) {
       return GetNpubProfile(npub)
@@ -62,14 +71,30 @@ const methodHandlers: IHostMethodHandlers = {
       if (!existingKeyPair) {
         throw new Error("No active user profile found");
       }
-      return FollowNpub(npub, existingKeyPair.nsec);
+      
+      // Use the appropriate key based on profile type
+      if (existingKeyPair.isRemoteSigner) {
+        // For remote signer, use npub
+        return FollowNpub(npub, existingKeyPair.npub);
+      } else {
+        // For local key, use nsec
+        return FollowNpub(npub, existingKeyPair.nsec);
+      }
     },
     unfollowUser(npub) {
       const existingKeyPair = getKeyPairFromLocalStorage();
       if (!existingKeyPair) {
         throw new Error("No active user profile found");
       }
-      return UnfollowNpub(npub, existingKeyPair.nsec);
+      
+      // Use the appropriate key based on profile type
+      if (existingKeyPair.isRemoteSigner) {
+        // For remote signer, use npub
+        return UnfollowNpub(npub, existingKeyPair.npub);
+      } else {
+        // For local key, use nsec
+        return UnfollowNpub(npub, existingKeyPair.nsec);
+      }
     },
     fetchNote(noteId, returnReactions) {
       return GetNote(noteId)
@@ -86,28 +111,60 @@ const methodHandlers: IHostMethodHandlers = {
       if (!existingKeyPair) {
         throw new Error("No active user profile found");
       }
-      return PublishNote(content, existingKeyPair.nsec);
+      
+      // Use the appropriate key based on profile type
+      if (existingKeyPair.isRemoteSigner) {
+        // For remote signer, use npub
+        return PublishNote(content, existingKeyPair.npub);
+      } else {
+        // For local key, use nsec
+        return PublishNote(content, existingKeyPair.nsec);
+      }
     },
     repostNote(noteId, quoteContent) {
       const existingKeyPair = getKeyPairFromLocalStorage();
       if (!existingKeyPair) {
         throw new Error("No active user profile found");
       }
-      return RepostNote(noteId, quoteContent, existingKeyPair.nsec);
+      
+      // Use the appropriate key based on profile type
+      if (existingKeyPair.isRemoteSigner) {
+        // For remote signer, use npub
+        return RepostNote(noteId, quoteContent, existingKeyPair.npub);
+      } else {
+        // For local key, use nsec
+        return RepostNote(noteId, quoteContent, existingKeyPair.nsec);
+      }
     },
     likeNote(noteId) {
       const existingKeyPair = getKeyPairFromLocalStorage();
       if (!existingKeyPair) {
         throw new Error("No active user profile found");
       }
-      return ReactToNote(noteId, existingKeyPair.nsec);
+      
+      // Use the appropriate key based on profile type
+      if (existingKeyPair.isRemoteSigner) {
+        // For remote signer, use npub
+        return ReactToNote(noteId, existingKeyPair.npub);
+      } else {
+        // For local key, use nsec
+        return ReactToNote(noteId, existingKeyPair.nsec);
+      }
     },
     replyToNote(noteId, content) {
       const existingKeyPair = getKeyPairFromLocalStorage();
       if (!existingKeyPair) {
         throw new Error("No active user profile found");
       }
-      return ReplyToNote(noteId, content, existingKeyPair.nsec);
+      
+      // Use the appropriate key based on profile type
+      if (existingKeyPair.isRemoteSigner) {
+        // For remote signer, use npub
+        return ReplyToNote(noteId, content, existingKeyPair.npub);
+      } else {
+        // For local key, use nsec
+        return ReplyToNote(noteId, content, existingKeyPair.nsec);
+      }
     },
     subscribeToFeed(feedType, onevent, withReactions) {
       const existingKeyPair = getKeyPairFromLocalStorage();

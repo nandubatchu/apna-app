@@ -11,6 +11,7 @@ export interface IUserKeyPair {
   npub: string;
   alias?: string;
   isActive?: boolean;
+  isRemoteSigner?: boolean;
 }
 
 // Constants for localStorage keys
@@ -157,4 +158,83 @@ export function getFaviconUrl(appUrl: string): string {
   } catch (e) {
     return '';
   }
+}
+
+// Remove all user profiles from localStorage
+export function removeAllUserProfilesFromLocalStorage(): void {
+  if (typeof window === 'undefined') return;
+  
+  localStorage.removeItem(PROFILES_KEY);
+  localStorage.removeItem(ACTIVE_PROFILE_KEY);
+  localStorage.removeItem('npub');
+  localStorage.removeItem('nsec');
+}
+
+// Add a remote signer profile to localStorage
+export function addRemoteSignerProfileToLocalStorage(pubkey: string, bunkerUrl: string, setAsActive: boolean = true, alias?: string): void {
+  if (typeof window === 'undefined') return;
+  
+  // Import nip19 dynamically since it's not available in server-side rendering
+  const nip19 = require('nostr-tools/nip19');
+  
+  // Ensure we have an encoded npub
+  const npub = pubkey.startsWith('npub') ? pubkey : nip19.npubEncode(pubkey);
+  
+  const profiles = getAllUserProfilesFromLocalStorage();
+  
+  // Check if profile already exists
+  const existingIndex = profiles.findIndex(p => p.npub === npub);
+  if (existingIndex >= 0) {
+    // Update existing profile
+    profiles[existingIndex] = {
+      nsec: '', // Remote signers don't have nsec stored locally
+      npub,
+      alias: alias || profiles[existingIndex].alias,
+      isRemoteSigner: true
+    };
+  } else {
+    // Add new profile
+    profiles.push({
+      nsec: '', // Remote signers don't have nsec stored locally
+      npub,
+      alias,
+      isRemoteSigner: true
+    });
+  }
+  
+  localStorage.setItem(PROFILES_KEY, JSON.stringify(profiles));
+  
+  if (setAsActive) {
+    setActiveUserProfile(npub);
+  }
+}
+
+// Check if a profile is a remote signer
+export function isRemoteSignerProfile(pubkeyOrNpub: string): boolean {
+  if (typeof window === 'undefined') return false;
+  
+  // Import nip19 dynamically since it's not available in server-side rendering
+  const nip19 = require('nostr-tools/nip19');
+  
+  // Convert raw pubkey to npub if needed
+  const npub = pubkeyOrNpub.startsWith('npub') ? pubkeyOrNpub : nip19.npubEncode(pubkeyOrNpub);
+  
+  const profile = getUserProfileByNpub(npub);
+  return profile?.isRemoteSigner === true;
+}
+
+// Get all remote signer profiles
+export function getRemoteSignerProfiles(): IUserKeyPair[] {
+  if (typeof window === 'undefined') return [];
+  
+  const profiles = getAllUserProfilesFromLocalStorage();
+  return profiles.filter(p => p.isRemoteSigner === true);
+}
+
+// Get all local profiles (non-remote signer)
+export function getLocalProfiles(): IUserKeyPair[] {
+  if (typeof window === 'undefined') return [];
+  
+  const profiles = getAllUserProfilesFromLocalStorage();
+  return profiles.filter(p => p.isRemoteSigner !== true);
 }
