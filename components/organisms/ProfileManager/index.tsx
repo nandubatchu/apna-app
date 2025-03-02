@@ -45,7 +45,7 @@ import {
 import { getPublicKey, nip19 } from "nostr-tools"
 import { User, KeyRound, Shuffle, Link, AlertTriangle } from "lucide-react"
 import { GenerateKeyPair } from "@/lib/nostr/events"
-import { parseRemoteSignerInput, connectToRemoteSigner } from "@/lib/nostr/nip46"
+import { parseRemoteSignerInput, connectToRemoteSigner, disconnectFromRemoteSigner } from "@/lib/nostr/nip46"
 
 const nsecFormSchema = z.object({
   nsec: z.string().startsWith("nsec", {
@@ -241,15 +241,38 @@ export default function ProfileManager({ open, onOpenChange, onProfileChange }: 
     setConfirmRemoveNpub(npub)
   }
 
-  function confirmRemoveProfile() {
+  async function confirmRemoveProfile() {
     if (confirmRemoveNpub) {
-      removeUserProfileFromLocalStorage(confirmRemoveNpub)
-      loadProfiles()
-      setConfirmRemoveNpub(null)
-      
-      // Notify parent component if needed
-      if (onProfileChange) {
-        onProfileChange()
+      try {
+        // Get the profile to check if it's a remote signer
+        const profile = getUserProfileByNpub(confirmRemoveNpub);
+        
+        // If it's a remote signer, disconnect it first
+        if (profile?.isRemoteSigner) {
+          console.log(`Disconnecting remote signer for profile: ${confirmRemoveNpub.slice(0, 8)}...${confirmRemoveNpub.slice(-8)}`);
+          
+          try {
+            // Disconnect from the remote signer
+            await disconnectFromRemoteSigner(confirmRemoveNpub);
+            console.log(`Successfully disconnected remote signer for profile: ${confirmRemoveNpub.slice(0, 8)}...${confirmRemoveNpub.slice(-8)}`);
+          } catch (error) {
+            console.error(`Error disconnecting remote signer: ${error instanceof Error ? error.message : String(error)}`);
+            // Continue with removal even if disconnection fails
+          }
+        }
+        
+        // Remove the profile from localStorage
+        removeUserProfileFromLocalStorage(confirmRemoveNpub);
+        loadProfiles();
+        setConfirmRemoveNpub(null);
+        
+        // Notify parent component if needed
+        if (onProfileChange) {
+          onProfileChange();
+        }
+      } catch (error) {
+        console.error(`Error removing profile: ${error instanceof Error ? error.message : String(error)}`);
+        setError(`Failed to remove profile: ${error instanceof Error ? error.message : "Unknown error"}`);
       }
     }
   }
@@ -284,11 +307,11 @@ export default function ProfileManager({ open, onOpenChange, onProfileChange }: 
             <DialogTitle>Authentication Required</DialogTitle>
           </DialogHeader>
           <div className="text-gray-700 mt-2">
-            <p className="mb-4">The remote signer requires authentication. Please visit the following URL to authenticate:</p>
+            <p className="mb-4">The remote signer requires authentication. The authentication page has been opened in a new tab.</p>
             <div className="bg-gray-100 p-3 rounded-md break-all">
-              <a 
-                href={authUrl || "#"} 
-                target="_blank" 
+              <a
+                href={authUrl || "#"}
+                target="_blank"
                 rel="noopener noreferrer"
                 className="text-blue-600 hover:underline flex items-center gap-2"
               >
@@ -298,12 +321,20 @@ export default function ProfileManager({ open, onOpenChange, onProfileChange }: 
             </div>
             <p className="mt-4 text-sm text-gray-500">After authenticating, you&apos;ll be able to use the remote signer.</p>
           </div>
-          <Button
-            onClick={() => setAuthUrl(null)}
-            className="mt-4 w-full bg-blue-500 hover:bg-blue-600 text-white"
-          >
-            Close
-          </Button>
+          <div className="flex flex-col gap-2 mt-4">
+            <Button
+              onClick={() => setAuthUrl(null)}
+              className="w-full bg-[#368564] hover:bg-[#2a684d] text-white"
+            >
+              I&apos;ve Accepted the Connection Request
+            </Button>
+            <Button
+              onClick={() => setAuthUrl(null)}
+              className="w-full bg-white hover:bg-gray-50 text-gray-700 border border-gray-300"
+            >
+              Cancel
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
       
