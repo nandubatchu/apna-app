@@ -380,7 +380,7 @@ export async function connectToRemoteSigner(
           
           // Open the auth URL in a new tab directly
           if (typeof window !== 'undefined') {
-            window.open(url, '_blank');
+            // window.open(url, '_blank');
             console.log(`🌐 Opened auth URL in new tab`);
           }
           

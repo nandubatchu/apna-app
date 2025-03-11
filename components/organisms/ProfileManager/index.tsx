@@ -333,15 +333,13 @@ export default function ProfileManager({ open, onOpenChange, onProfileChange }: 
           <div className="text-gray-700 mt-2">
             <p className="mb-4">The remote signer requires authentication. The authentication page has been opened in a new tab.</p>
             <div className="bg-gray-100 p-3 rounded-md break-all">
-              <a
-                href={authUrl || "#"}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-600 hover:underline flex items-center gap-2"
+              <button
+                onClick={() => authUrl && window.open(authUrl, "_blank")}
+                className="text-blue-600 hover:underline flex items-center gap-2 text-left"
               >
                 {authUrl}
                 <Link className="w-4 h-4" />
-              </a>
+              </button>
             </div>
             <p className="mt-4 text-sm text-gray-500">After authenticating, you&apos;ll be able to use the remote signer.</p>
           </div>
