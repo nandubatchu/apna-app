@@ -2,7 +2,11 @@ import { generateSecretKey, getPublicKey } from 'nostr-tools'
 import * as nip19 from 'nostr-tools/nip19'
 import { BunkerSigner, BunkerPointer, parseBunkerInput } from 'nostr-tools/nip46'
 import { pool, DEFAULT_RELAYS } from './core'
-import { addRemoteSignerProfileToLocalStorage, isRemoteSignerProfile } from '@/lib/utils'
+import {
+  addRemoteSignerProfileToLocalStorage,
+  isRemoteSignerProfile,
+  getKeyPairFromLocalStorage
+} from '@/lib/utils'
 
 // Interface for remote signer connection
 export interface RemoteSignerConnection {
@@ -14,8 +18,9 @@ export interface RemoteSignerConnection {
   connected: boolean;
 }
 
-// Store active remote signer connections
-const remoteSignerConnections: Map<string, RemoteSignerConnection> = new Map();
+// Store the active remote signer connection
+let activeConnection: RemoteSignerConnection | null = null;
+let activeUserPubkey: string | null = null;
 
 // Track pending remote signer authentications
 const pendingRemoteSignerAuths: Record<string, {
@@ -43,201 +48,213 @@ function normalizePubkey(pubkey: string): { raw: string; npub: string } {
   }
 }
 
-// Function to log the current state of connections
+// Function to log the current connection state
 function logConnectionState(label: string) {
   if (typeof window === 'undefined') return;
   
   try {
     const storedConnections = getRemoteSignerConnectionsFromLocalStorage();
-    const memoryConnections = Array.from(remoteSignerConnections.entries());
     
     console.log(`📊 CONNECTION STATE [${label}]:`);
-    console.log(`   Memory connections (${memoryConnections.length}):`);
-    memoryConnections.forEach(([pubkey, conn]) => {
-      console.log(`     - ${pubkey.slice(0, 8)}...${pubkey.slice(-8)} (connected: ${conn.connected})`);
-    });
+    console.log(`   Active connection: ${activeConnection ? 'Yes' : 'No'}`);
+    
+    if (activeConnection && activeUserPubkey) {
+      console.log(`   Active user pubkey: ${activeUserPubkey.slice(0, 8)}...${activeUserPubkey.slice(-8)}`);
+      console.log(`   Connected: ${activeConnection.connected}`);
+    }
     
     console.log(`   LocalStorage connections (${Object.keys(storedConnections).length}):`);
     Object.entries(storedConnections).forEach(([pubkey, info]) => {
-      console.log(`     - ${pubkey.slice(0, 8)}...${pubkey.slice(-8)} (URL: ${info.bunkerUrl?.slice(0, 20)}...)`);
+      const isActive = activeUserPubkey === pubkey;
+      console.log(`     - ${pubkey.slice(0, 8)}...${pubkey.slice(-8)} ${isActive ? '(ACTIVE)' : ''} (URL: ${info.bunkerUrl?.slice(0, 20)}...)`);
     });
   } catch (error) {
     console.error('Error logging connection state:', error);
   }
 }
 
-// Function to synchronize in-memory connections with localStorage
-async function syncConnectionsWithLocalStorage() {
-  if (typeof window === 'undefined') return;
+// Initialize remote signer connection for the active profile
+async function initializeActiveProfileConnection(retryCount = 0): Promise<boolean> {
+  if (typeof window === 'undefined') return false;
   
   try {
-    console.log('🔄 Synchronizing in-memory connections with localStorage...');
+    console.log('🔄 Initializing remote signer connection for active profile...');
     
+    // Get the active profile
+    const activeProfile = getKeyPairFromLocalStorage();
+    if (!activeProfile || !activeProfile.npub) {
+      console.log('ℹ️ No active profile found.');
+      return false;
+    }
+    
+    // Check if the active profile is a remote signer
+    if (!isRemoteSignerProfile(activeProfile.npub)) {
+      console.log('ℹ️ Active profile is not a remote signer.');
+      return false;
+    }
+    
+    // Get the connection info for the active profile
     const storedConnections = getRemoteSignerConnectionsFromLocalStorage();
-    const memoryConnections = Array.from(remoteSignerConnections.entries());
     
-    // Check for connections in localStorage but not in memory
-    for (const [pubkey, info] of Object.entries(storedConnections)) {
-      if (!remoteSignerConnections.has(pubkey) && info.bunkerUrl) {
-        console.log(`   Found connection in localStorage but not in memory: ${pubkey.slice(0, 8)}...${pubkey.slice(-8)}`);
-        
-        try {
-          // Try to reconnect
-          const bunkerPointer = await parseRemoteSignerInput(info.bunkerUrl);
-          if (bunkerPointer) {
-            console.log(`   Attempting to reconnect: ${pubkey.slice(0, 8)}...${pubkey.slice(-8)}`);
-            
-            // Use a separate function to avoid callback issues
-            connectToRemoteSigner(bunkerPointer, (url) => {
-              console.log(`   Authentication required for reconnection: ${pubkey.slice(0, 8)}...${pubkey.slice(-8)}`);
-              pendingRemoteSignerAuths[pubkey] = {
-                authUrl: url,
-                timestamp: Date.now()
-              };
-            }).catch(error => {
-              console.error(`   Failed to reconnect: ${error.message}`);
-            });
+    // Normalize the pubkey to handle both raw pubkeys and npubs
+    const { raw, npub } = normalizePubkey(activeProfile.npub);
+    
+    // Try to find connection info using both raw pubkey and npub
+    const connectionInfo = storedConnections[activeProfile.npub] ||
+                         storedConnections[raw] ||
+                         storedConnections[npub];
+    
+    if (!connectionInfo || !connectionInfo.bunkerUrl) {
+      console.error(`❌ No connection info found for active profile: ${activeProfile.npub.slice(0, 8)}...${activeProfile.npub.slice(-8)}`);
+      console.error(`   Tried original: ${activeProfile.npub.slice(0, 8)}...${activeProfile.npub.slice(-8)}`);
+      console.error(`   Tried raw: ${raw.slice(0, 8)}...${raw.slice(-8)}`);
+      console.error(`   Tried npub: ${npub.slice(0, 8)}...${npub.slice(-8)}`);
+      
+      // Log all stored connections for debugging
+      console.error(`   Available connections: ${Object.keys(storedConnections).map(k => k.slice(0, 8) + '...' + k.slice(-8)).join(', ')}`);
+      return false;
+    }
+    
+    console.log(`🔄 Connecting to remote signer for active profile: ${activeProfile.npub.slice(0, 8)}...${activeProfile.npub.slice(-8)}`);
+    console.log(`   Using bunker URL: ${connectionInfo.bunkerUrl}`);
+    
+    // Parse the bunker URL to get the bunker pointer
+    const bunkerPointer = await parseRemoteSignerInput(connectionInfo.bunkerUrl);
+    if (!bunkerPointer) {
+      console.error(`❌ Failed to parse bunker URL for active profile: ${activeProfile.npub.slice(0, 8)}...${activeProfile.npub.slice(-8)}`);
+      return false;
+    }
+    
+    // Check if we have stored client keys for this connection
+    let clientSecretKey: Uint8Array | undefined;
+    let clientPubkey: string | undefined;
+    
+    if (connectionInfo.clientSecretKeyHex && connectionInfo.clientPubkey) {
+      try {
+        // Convert hex string back to Uint8Array
+        if (connectionInfo.clientSecretKeyHex) {
+          const hexString = connectionInfo.clientSecretKeyHex; // Assign to a local variable to help TypeScript
+          const bytes = new Uint8Array(hexString.length / 2);
+          for (let i = 0; i < hexString.length; i += 2) {
+            bytes[i / 2] = parseInt(hexString.substring(i, i + 2), 16);
           }
-        } catch (error) {
-          console.error(`   Error reconnecting: ${error instanceof Error ? error.message : String(error)}`);
+          clientSecretKey = bytes;
+        } else {
+          console.error(`   Client secret key hex is undefined`);
         }
+        clientPubkey = connectionInfo.clientPubkey;
+        console.log(`   Found stored client keys: ${clientPubkey.slice(0, 8)}...${clientPubkey.slice(-8)}`);
+      } catch (error) {
+        console.error(`   Error parsing stored client keys: ${error instanceof Error ? error.message : String(error)}`);
       }
     }
     
-    // Check for connections in memory but not in localStorage
-    for (const [pubkey, connection] of memoryConnections) {
-      if (!storedConnections[pubkey]) {
-        console.log(`   Found connection in memory but not in localStorage: ${pubkey.slice(0, 8)}...${pubkey.slice(-8)}`);
+    // Get the alias from the connection info if available
+    const alias = connectionInfo.alias;
+    
+    // Connect to the remote signer with stored client keys if available
+    const connection = await connectToRemoteSigner(
+      bunkerPointer,
+      (url) => {
+        console.log(`🔐 Authentication required for remote signer: ${activeProfile.npub.slice(0, 8)}...${activeProfile.npub.slice(-8)}`);
+        console.log(`   Auth URL: ${url}`);
         
-        // Create a bunker URL from the bunker pointer
-        const bunkerPointer = connection.bunkerPointer;
-        const relaysParam = bunkerPointer.relays.map(r => `relay=${encodeURIComponent(r)}`).join('&');
-        const bunkerUrl = `bunker://${bunkerPointer.pubkey}?${relaysParam}`;
-        
-        // Save to localStorage
-        const connections = getRemoteSignerConnectionsFromLocalStorage();
-        connections[pubkey] = {
-          bunkerUrl: bunkerUrl,
+        // Store the auth URL for this pubkey
+        pendingRemoteSignerAuths[activeProfile.npub] = {
+          authUrl: url,
           timestamp: Date.now()
         };
-        localStorage.setItem('remote_signer_connections', JSON.stringify(connections));
-        console.log(`   Saved connection to localStorage: ${pubkey.slice(0, 8)}...${pubkey.slice(-8)}`);
+        
+        // Open the auth URL in a new tab
+        if (typeof window !== 'undefined') {
+          window.open(url, '_blank');
+          console.log(`🌐 Opened auth URL in new tab for pubkey: ${activeProfile.npub.slice(0, 8)}...${activeProfile.npub.slice(-8)}`);
+        }
+      },
+      clientSecretKey,
+      clientPubkey,
+      alias // Pass the stored alias if available
+    );
+    
+    if (connection) {
+      console.log(`✅ Successfully connected to remote signer for active profile: ${activeProfile.npub.slice(0, 8)}...${activeProfile.npub.slice(-8)}`);
+      
+      // Set as the active connection
+      activeConnection = connection;
+      activeUserPubkey = activeProfile.npub;
+      
+      // Remove from pending auths if it was there
+      delete pendingRemoteSignerAuths[activeProfile.npub];
+      
+      // Log the final connection state
+      logConnectionState('AFTER INIT');
+      return true;
+    } else {
+      console.error(`❌ Failed to connect to remote signer for active profile: ${activeProfile.npub.slice(0, 8)}...${activeProfile.npub.slice(-8)}`);
+      
+      // Retry logic - if we haven't exceeded max retries
+      if (retryCount < 2) {
+        console.log(`🔄 Retrying connection (attempt ${retryCount + 1}/2)...`);
+        // Wait a bit before retrying
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        return initializeActiveProfileConnection(retryCount + 1);
       }
+      
+      return false;
+    }
+  } catch (error) {
+    console.error('❌ Failed to initialize remote signer connection for active profile:', error);
+    console.error(`   Error details: ${error instanceof Error ? error.message : String(error)}`);
+    console.error(`   Stack trace: ${error instanceof Error ? error.stack : 'No stack trace available'}`);
+    
+    // Retry logic - if we haven't exceeded max retries
+    if (retryCount < 2) {
+      console.log(`🔄 Retrying connection after error (attempt ${retryCount + 1}/2)...`);
+      // Wait a bit before retrying
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      return initializeActiveProfileConnection(retryCount + 1);
     }
     
-    console.log('✅ Synchronization complete');
-  } catch (error) {
-    console.error('❌ Error synchronizing connections:', error);
-    console.error(`   Error details: ${error instanceof Error ? error.message : String(error)}`);
+    return false;
   }
 }
 
-// Function to periodically check and sync connections
-function setupPeriodicSync() {
-  if (typeof window === 'undefined') return;
-  
-  // Sync connections every 30 seconds
-  const intervalId = setInterval(() => {
-    console.log('🔄 Running periodic connection sync...');
-    syncConnectionsWithLocalStorage();
-  }, 30000);
-  
-  // Clean up on page unload
-  window.addEventListener('beforeunload', () => {
-    clearInterval(intervalId);
-  });
-}
-
-// Initialize remote signer connections from localStorage on module load
+// Listen for profile changes
 if (typeof window !== 'undefined') {
-  // We need to defer this to ensure it runs after the module is fully loaded
-  setTimeout(() => {
-    try {
-      console.log('🔄 Initializing remote signer connections from localStorage...');
-      logConnectionState('BEFORE INIT');
-      
-      const storedConnections = getRemoteSignerConnectionsFromLocalStorage();
-      const connectionCount = Object.keys(storedConnections).length;
-      
-      if (connectionCount === 0) {
-        console.log('ℹ️ No stored remote signer connections found.');
-        return;
-      }
-      
-      console.log(`🔑 Found ${connectionCount} stored remote signer connection(s). Attempting to reconnect...`);
-      
-      // For each stored connection, attempt to reconnect
-      Object.entries(storedConnections).forEach(async ([userPubkey, connectionInfo]) => {
-        console.log(`🔄 Attempting to reconnect to remote signer for pubkey: ${userPubkey.slice(0, 8)}...${userPubkey.slice(-8)}`);
-        console.log(`   Using bunker URL: ${connectionInfo.bunkerUrl}`);
-        
-        try {
-          // Parse the bunker URL to get the bunker pointer
-          if (!connectionInfo.bunkerUrl) {
-            console.error(`❌ Missing bunker URL for pubkey: ${userPubkey.slice(0, 8)}...${userPubkey.slice(-8)}`);
-            return;
-          }
-          
-          const bunkerPointer = await parseRemoteSignerInput(connectionInfo.bunkerUrl);
-          if (!bunkerPointer) {
-            console.error(`❌ Failed to parse bunker URL for pubkey: ${userPubkey.slice(0, 8)}...${userPubkey.slice(-8)}`);
-            return;
-          }
-          
-          console.log(`✅ Successfully parsed bunker URL for pubkey: ${userPubkey.slice(0, 8)}...${userPubkey.slice(-8)}`);
-          console.log(`   Bunker pubkey: ${bunkerPointer.pubkey.slice(0, 8)}...${bunkerPointer.pubkey.slice(-8)}`);
-          console.log(`   Relays: ${bunkerPointer.relays.join(', ')}`);
-          
-          // Reconnect to the remote signer
-          console.log(`🔄 Connecting to remote signer for pubkey: ${userPubkey.slice(0, 8)}...${userPubkey.slice(-8)}`);
-          
-          connectToRemoteSigner(
-            bunkerPointer,
-            (url) => {
-              console.log(`🔐 Authentication required for remote signer: ${userPubkey.slice(0, 8)}...${userPubkey.slice(-8)}`);
-              console.log(`   Auth URL: ${url}`);
-              
-              // Store the auth URL for this pubkey
-              pendingRemoteSignerAuths[userPubkey] = {
-                authUrl: url,
-                timestamp: Date.now()
-              };
-              
-              // Open the auth URL in a new tab
-              window.open(url, '_blank');
-              console.log(`🌐 Opened auth URL in new tab for pubkey: ${userPubkey.slice(0, 8)}...${userPubkey.slice(-8)}`);
-            }
-          ).then(connection => {
-            if (connection) {
-              console.log(`✅ Successfully reconnected to remote signer: ${userPubkey.slice(0, 8)}...${userPubkey.slice(-8)}`);
-              // Remove from pending auths if it was there
-              delete pendingRemoteSignerAuths[userPubkey];
-            } else {
-              console.error(`❌ Failed to reconnect to remote signer: ${userPubkey.slice(0, 8)}...${userPubkey.slice(-8)}`);
-            }
-          }).catch(error => {
-            console.error(`❌ Error reconnecting to remote signer: ${userPubkey.slice(0, 8)}...${userPubkey.slice(-8)}`);
-            console.error(`   Error details: ${error.message}`);
-          });
-        } catch (error) {
-          console.error(`❌ Exception while reconnecting to remote signer: ${userPubkey.slice(0, 8)}...${userPubkey.slice(-8)}`);
-          console.error(`   Error details: ${error instanceof Error ? error.message : String(error)}`);
-          console.error(`   Stack trace: ${error instanceof Error ? error.stack : 'No stack trace available'}`);
-        }
-      });
-    } catch (error) {
-      console.error('❌ Failed to initialize remote signer connections:', error);
-      console.error(`   Error details: ${error instanceof Error ? error.message : String(error)}`);
-      console.error(`   Stack trace: ${error instanceof Error ? error.stack : 'No stack trace available'}`);
-    } finally {
-      // Log the final state after initialization and sync connections
-      setTimeout(() => {
-        logConnectionState('AFTER INIT');
-        syncConnectionsWithLocalStorage();
-        setupPeriodicSync(); // Start periodic sync
-      }, 1000); // Delay to allow async operations to complete
+  // Initialize connection for active profile on module load
+  setTimeout(async () => {
+    const success = await initializeActiveProfileConnection();
+    if (!success) {
+      console.log('⚠️ Initial remote signer connection failed or not applicable');
     }
   }, 0);
+  
+  // Listen for storage events to detect profile changes
+  window.addEventListener('storage', async (event) => {
+    if (event.key === 'active_profile_npub') {
+      console.log('🔄 Active profile changed, updating remote signer connection...');
+      
+      // Close the existing connection if there is one
+      if (activeConnection && activeConnection.signer) {
+        console.log(`🔄 Closing existing connection for: ${activeUserPubkey?.slice(0, 8)}...${activeUserPubkey?.slice(-8)}`);
+        try {
+          await activeConnection.signer.close();
+        } catch (error) {
+          console.error(`❌ Error closing existing connection: ${error instanceof Error ? error.message : String(error)}`);
+        }
+      }
+      
+      // Reset the active connection
+      activeConnection = null;
+      activeUserPubkey = null;
+      
+      // Initialize connection for the new active profile
+      const success = await initializeActiveProfileConnection();
+      if (!success) {
+        console.log('⚠️ Remote signer connection failed or not applicable after profile change');
+      }
+    }
+  });
 }
 
 /**
@@ -287,7 +304,10 @@ export async function parseRemoteSignerInput(input: string): Promise<BunkerPoint
  */
 export async function connectToRemoteSigner(
   bunkerPointer: BunkerPointer,
-  onAuthUrl?: (url: string) => void
+  onAuthUrl?: (url: string) => void,
+  existingClientSecretKey?: Uint8Array,
+  existingClientPubkey?: string,
+  alias?: string
 ): Promise<RemoteSignerConnection | null> {
   try {
     console.log(`🔄 Connecting to remote signer...`);
@@ -295,10 +315,57 @@ export async function connectToRemoteSigner(
     console.log(`   Bunker pubkey: ${bunkerPointer.pubkey.slice(0, 8)}...${bunkerPointer.pubkey.slice(-8)}`);
     console.log(`   Relays: ${bunkerPointer.relays.join(', ')}`);
     
-    // Generate a new client key pair for this connection
-    const clientSecretKey = generateSecretKey();
-    const clientPubkey = getPublicKey(clientSecretKey);
-    console.log(`   Generated client pubkey: ${clientPubkey.slice(0, 8)}...${clientPubkey.slice(-8)}`);
+    // Check if we have stored client keys for this bunker
+    const storedConnections = getRemoteSignerConnectionsFromLocalStorage();
+    
+    // Use provided client keys if available, otherwise generate new ones
+    let clientSecretKey: Uint8Array;
+    let clientPubkey: string;
+    
+    if (existingClientSecretKey && existingClientPubkey) {
+      clientSecretKey = existingClientSecretKey;
+      clientPubkey = existingClientPubkey;
+      console.log(`   Using provided client keys: ${clientPubkey.slice(0, 8)}...${clientPubkey.slice(-8)}`);
+    } else {
+      clientSecretKey = generateSecretKey();
+      clientPubkey = getPublicKey(clientSecretKey);
+      console.log(`   Generated new client pubkey: ${clientPubkey.slice(0, 8)}...${clientPubkey.slice(-8)}`);
+    }
+    
+    // Try to find existing client keys for this bunker
+    let existingClientKeys = false;
+    for (const [_, info] of Object.entries(storedConnections)) {
+      if (info.bunkerUrl && info.bunkerUrl.includes(bunkerPointer.pubkey) &&
+          info.clientSecretKeyHex && info.clientPubkey) {
+        try {
+          // Convert hex string back to Uint8Array
+          if (info.clientSecretKeyHex) {
+            const hexString = info.clientSecretKeyHex; // Assign to a local variable to help TypeScript
+            const bytes = new Uint8Array(hexString.length / 2);
+            for (let i = 0; i < hexString.length; i += 2) {
+              bytes[i / 2] = parseInt(hexString.substring(i, i + 2), 16);
+            }
+            clientSecretKey = bytes;
+          } else {
+            throw new Error('Client secret key hex is undefined');
+          }
+          clientPubkey = info.clientPubkey;
+          existingClientKeys = true;
+          console.log(`   Reusing existing client keys: ${clientPubkey.slice(0, 8)}...${clientPubkey.slice(-8)}`);
+          break;
+        } catch (error) {
+          console.error(`   Error reusing client keys: ${error instanceof Error ? error.message : String(error)}`);
+        }
+      }
+    }
+    
+    // If existing keys were found, we've already set them above
+    // If not, we're using the default new keys generated above
+    if (existingClientKeys) {
+      console.log(`   Using existing client keys for better persistence`);
+    } else {
+      console.log(`   No existing client keys found, using newly generated keys`);
+    }
     
     // Create a new BunkerSigner instance
     console.log(`   Creating BunkerSigner instance...`);
@@ -326,10 +393,23 @@ export async function connectToRemoteSigner(
       }
     );
     
-    // Connect to the remote signer
-    console.log(`   Connecting to remote signer...`);
-    await signer.connect();
-    console.log(`✅ Successfully connected to remote signer`);
+    // Connect to the remote signer with a timeout
+    console.log(`   Connecting to remote signer with a 30-second timeout...`);
+    try {
+      await Promise.race([
+        signer.connect(),
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Connection timeout after 30 seconds')), 30000)
+        )
+      ]);
+      console.log(`✅ Successfully connected to remote signer`);
+    } catch (error) {
+      if (error instanceof Error && error.message.includes('timeout')) {
+        console.error(`❌ Connection to remote signer timed out after 30 seconds`);
+        throw new Error('Connection to remote signer timed out. Please try again later.');
+      }
+      throw error;
+    }
     
     // Get the user's public key from the remote signer
     console.log(`   Getting user's public key...`);
@@ -347,27 +427,63 @@ export async function connectToRemoteSigner(
       connected: true
     };
     
-    // Store the connection
-    console.log(`   Storing connection in memory...`);
-    remoteSignerConnections.set(userPubkey, connection);
+    // Create a bunker URL from the bunker pointer
+    // Format: bunker://<pubkey>?relay=<relay1>&relay=<relay2>&secret=<secret>
+    const params = [];
+    
+    // Add relays
+    for (const relay of bunkerPointer.relays) {
+      params.push(`relay=${encodeURIComponent(relay)}`);
+    }
+    
+    // // Add secret if present
+    // if (bunkerPointer.secret) {
+    //   console.log(`   Including secret parameter in bunker URL for authentication`);
+    //   params.push(`secret=${encodeURIComponent(bunkerPointer.secret)}`);
+    // }
+    
+    const paramsString = params.join('&');
+    const bunkerUrl = `bunker://${bunkerPointer.pubkey}?${paramsString}`;
+    
+    // Log the final connection string
+    console.log(`   Final connection string: ${bunkerUrl}`);
     
     // Save the connection details to localStorage for persistence
     if (typeof window !== 'undefined') {
       console.log(`   Saving connection to localStorage for persistence...`);
       const connections = getRemoteSignerConnectionsFromLocalStorage();
       
-      // Create a bunker URL from the bunker pointer
-      // Format: bunker://<pubkey>?relay=<relay1>&relay=<relay2>...
-      const relaysParam = bunkerPointer.relays.map(r => `relay=${encodeURIComponent(r)}`).join('&');
-      const bunkerUrl = `bunker://${bunkerPointer.pubkey}?${relaysParam}`;
-      console.log(`   Generated bunker URL: ${bunkerUrl}`);
+      // Normalize the pubkey to handle both raw pubkeys and npubs
+      const { raw, npub } = normalizePubkey(userPubkey);
       
-      connections[userPubkey] = {
-        bunkerUrl: bunkerUrl,
-        timestamp: Date.now()
+      // Store with both formats to ensure we can find it later
+      // Convert Uint8Array to hex string for storage
+      const bytesToHex = (bytes: Uint8Array) => {
+        return Array.from(bytes)
+          .map(b => b.toString(16).padStart(2, '0'))
+          .join('');
       };
-      localStorage.setItem('remote_signer_connections', JSON.stringify(connections));
-      console.log(`✅ Successfully saved connection to localStorage`);
+      
+      const connectionInfo = {
+        bunkerUrl: bunkerUrl,
+        timestamp: Date.now(),
+        clientSecretKeyHex: bytesToHex(clientSecretKey),
+        clientPubkey: clientPubkey
+      };
+      
+      // Use the saveRemoteSignerConnectionToLocalStorage function to store the connection info
+      // This will handle storing with multiple keys and also store the client keys
+      saveRemoteSignerConnectionToLocalStorage(
+        userPubkey,
+        bunkerUrl,
+        alias, // Pass the alias parameter
+        clientSecretKey,
+        clientPubkey
+      );
+      
+      console.log(`✅ Successfully saved connection to localStorage with client keys for persistence`);
+      console.log(`   User pubkey: ${userPubkey.slice(0, 8)}...${userPubkey.slice(-8)}`);
+      console.log(`   Client pubkey: ${clientPubkey.slice(0, 8)}...${clientPubkey.slice(-8)}`);
     }
     
     console.log(`✅ Remote signer connection complete for pubkey: ${userPubkey.slice(0, 8)}...${userPubkey.slice(-8)}`);
@@ -392,52 +508,20 @@ export async function disconnectFromRemoteSigner(userPubkey: string): Promise<bo
     // Normalize the pubkey to handle both raw pubkeys and npubs
     const { raw, npub } = normalizePubkey(userPubkey);
     
-    // Try to get the connection using the raw pubkey
-    let connection = remoteSignerConnections.get(raw);
-    
-    // If not found, try with the npub
-    if (!connection) {
-      connection = remoteSignerConnections.get(npub);
-    }
-    
-    // If still not found, try to find it by iterating through all connections
-    let foundKey: string | null = null;
-    if (!connection) {
-      for (const [key, conn] of Array.from(remoteSignerConnections.entries())) {
-        const normalized = normalizePubkey(key);
-        if (normalized.raw === raw || normalized.npub === npub) {
-          connection = conn;
-          foundKey = key;
-          break;
-        }
+    // Check if this is the active connection
+    if (activeUserPubkey === userPubkey || activeUserPubkey === raw || activeUserPubkey === npub) {
+      if (activeConnection && activeConnection.signer) {
+        console.log(`   Closing active signer connection...`);
+        await activeConnection.signer.close();
+        console.log(`✅ Successfully closed active signer connection`);
       }
-    }
-    
-    if (!connection) {
-      console.log(`ℹ️ No active connection found for pubkey: ${userPubkey.slice(0, 8)}...${userPubkey.slice(-8)}`);
-      console.log(`   Tried raw: ${raw.slice(0, 8)}...${raw.slice(-8)}`);
-      console.log(`   Tried npub: ${npub.slice(0, 8)}...${npub.slice(-8)}`);
-      return false;
-    }
-    
-    if (connection.signer) {
-      console.log(`   Closing signer connection...`);
-      await connection.signer.close();
-      console.log(`✅ Successfully closed signer connection`);
-    }
-    
-    console.log(`   Removing connection from memory...`);
-    // Use the correct key to delete from the Map
-    if (foundKey) {
-      remoteSignerConnections.delete(foundKey);
-      console.log(`   Deleted connection with key: ${foundKey.slice(0, 8)}...${foundKey.slice(-8)}`);
-    } else if (connection.userPubkey) {
-      remoteSignerConnections.delete(connection.userPubkey);
-      console.log(`   Deleted connection with userPubkey: ${connection.userPubkey.slice(0, 8)}...${connection.userPubkey.slice(-8)}`);
+      
+      // Reset the active connection
+      activeConnection = null;
+      activeUserPubkey = null;
     } else {
-      // Fallback to the original pubkey
-      remoteSignerConnections.delete(userPubkey);
-      console.log(`   Deleted connection with original pubkey: ${userPubkey.slice(0, 8)}...${userPubkey.slice(-8)}`);
+      console.log(`ℹ️ No active connection found for pubkey: ${userPubkey.slice(0, 8)}...${userPubkey.slice(-8)}`);
+      console.log(`   Active pubkey: ${activeUserPubkey?.slice(0, 8)}...${activeUserPubkey?.slice(-8)}`);
     }
     
     // Remove the connection details from localStorage
@@ -446,9 +530,6 @@ export async function disconnectFromRemoteSigner(userPubkey: string): Promise<bo
     removeRemoteSignerConnectionFromLocalStorage(userPubkey);
     if (raw !== userPubkey) removeRemoteSignerConnectionFromLocalStorage(raw);
     if (npub !== userPubkey) removeRemoteSignerConnectionFromLocalStorage(npub);
-    if (connection.userPubkey && connection.userPubkey !== userPubkey) {
-      removeRemoteSignerConnectionFromLocalStorage(connection.userPubkey);
-    }
     
     console.log(`✅ Successfully disconnected from remote signer: ${userPubkey.slice(0, 8)}...${userPubkey.slice(-8)}`);
     logConnectionState('AFTER DISCONNECT');
@@ -468,32 +549,16 @@ export function getRemoteSignerConnection(userPubkey: string): RemoteSignerConne
   // Normalize the pubkey to handle both raw pubkeys and npubs
   const { raw, npub } = normalizePubkey(userPubkey);
   
-  // Try to get the connection using the raw pubkey
-  let connection = remoteSignerConnections.get(raw);
-  if (connection) {
-    console.log(`   Found connection using raw pubkey: ${raw.slice(0, 8)}...${raw.slice(-8)}`);
-    return connection;
-  }
-  
-  // If not found, try with the npub
-  connection = remoteSignerConnections.get(npub);
-  if (connection) {
-    console.log(`   Found connection using npub: ${npub.slice(0, 8)}...${npub.slice(-8)}`);
-    return connection;
-  }
-  
-  // If still not found, try to find it by iterating through all connections
-  for (const [key, conn] of Array.from(remoteSignerConnections.entries())) {
-    const normalized = normalizePubkey(key);
-    if (normalized.raw === raw || normalized.npub === npub) {
-      console.log(`   Found connection using key: ${key.slice(0, 8)}...${key.slice(-8)}`);
-      return conn;
+  // Check if this is the active connection
+  if (activeConnection && activeUserPubkey) {
+    if (activeUserPubkey === userPubkey || activeUserPubkey === raw || activeUserPubkey === npub) {
+      console.log(`   Found active connection for pubkey: ${userPubkey.slice(0, 8)}...${userPubkey.slice(-8)}`);
+      return activeConnection;
     }
   }
   
   console.log(`   No connection found for pubkey: ${userPubkey.slice(0, 8)}...${userPubkey.slice(-8)}`);
-  console.log(`   Tried raw: ${raw.slice(0, 8)}...${raw.slice(-8)}`);
-  console.log(`   Tried npub: ${npub.slice(0, 8)}...${npub.slice(-8)}`);
+  console.log(`   Active pubkey: ${activeUserPubkey?.slice(0, 8)}...${activeUserPubkey?.slice(-8)}`);
   return undefined;
 }
 
@@ -501,7 +566,17 @@ export function getRemoteSignerConnection(userPubkey: string): RemoteSignerConne
  * Check if a user pubkey is connected to a remote signer
  */
 export function isRemoteSignerConnected(userPubkey: string): boolean {
-  return getRemoteSignerConnection(userPubkey) !== undefined;
+  // Normalize the pubkey to handle both raw pubkeys and npubs
+  const { raw, npub } = normalizePubkey(userPubkey);
+  
+  // Check if this is the active connection
+  if (activeConnection && activeUserPubkey) {
+    if (activeUserPubkey === userPubkey || activeUserPubkey === raw || activeUserPubkey === npub) {
+      return activeConnection.connected;
+    }
+  }
+  
+  return false;
 }
 
 /**
@@ -514,17 +589,18 @@ export async function signEventWithRemoteSigner(
   console.log(`🔄 Attempting to sign event with remote signer for pubkey: ${userPubkey.slice(0, 8)}...${userPubkey.slice(-8)}`);
   logConnectionState('BEFORE SIGN');
   
-  // Use the normalized lookup function to handle both raw pubkeys and npubs
-  const connection = getRemoteSignerConnection(userPubkey);
-  if (!connection || !connection.signer) {
+  // Normalize the pubkey to handle both raw pubkeys and npubs
+  const { raw, npub } = normalizePubkey(userPubkey);
+  
+  // Check if this is the active connection
+  if (!activeConnection || !activeConnection.signer ||
+      (activeUserPubkey !== userPubkey && activeUserPubkey !== raw && activeUserPubkey !== npub)) {
     console.error(`❌ No active connection found for pubkey: ${userPubkey.slice(0, 8)}...${userPubkey.slice(-8)}`);
     
     // Check if there's a pending authentication for this pubkey
-    // Try with original pubkey, raw pubkey, and npub
-    const { raw, npub } = normalizePubkey(userPubkey);
     const pendingAuth = pendingRemoteSignerAuths[userPubkey] ||
-                        pendingRemoteSignerAuths[raw] ||
-                        pendingRemoteSignerAuths[npub];
+                       pendingRemoteSignerAuths[raw] ||
+                       pendingRemoteSignerAuths[npub];
     
     if (pendingAuth) {
       console.error(`❌ Authentication required for pubkey: ${userPubkey.slice(0, 8)}...${userPubkey.slice(-8)}`);
@@ -538,15 +614,124 @@ export async function signEventWithRemoteSigner(
     
     // Check for connection info using all possible keys
     const connectionInfo = storedConnections[userPubkey] ||
-                          storedConnections[raw] ||
-                          storedConnections[npub];
+                         storedConnections[raw] ||
+                         storedConnections[npub];
     
     if (connectionInfo) {
-      console.error(`❌ Connection info found in localStorage but not in memory for pubkey: ${userPubkey.slice(0, 8)}...${userPubkey.slice(-8)}`);
+      console.error(`❌ Connection info found in localStorage but not active for pubkey: ${userPubkey.slice(0, 8)}...${userPubkey.slice(-8)}`);
       console.error(`   Bunker URL: ${connectionInfo.bunkerUrl}`);
       console.error(`   Timestamp: ${new Date(connectionInfo.timestamp).toISOString()}`);
-      console.error(`   Try reconnecting by going to Settings > Manage Profiles`);
-      throw new Error('Remote signer is not currently connected. Please reconnect to the remote signer.');
+      
+      // Try to automatically reconnect instead of throwing an error
+      console.log(`🔄 Attempting to automatically reconnect to remote signer...`);
+      
+      try {
+        // Parse the bunker URL to get the bunker pointer
+        if (!connectionInfo.bunkerUrl) {
+          throw new Error('Bunker URL is undefined');
+        }
+        
+        const bunkerPointer = await parseRemoteSignerInput(connectionInfo.bunkerUrl);
+        if (!bunkerPointer) {
+          throw new Error(`Failed to parse bunker URL: ${connectionInfo.bunkerUrl}`);
+        }
+        
+        // Check if we have stored client keys for this connection
+        let clientSecretKey: Uint8Array | undefined;
+        let clientPubkey: string | undefined;
+        
+        if (connectionInfo.clientSecretKeyHex && connectionInfo.clientPubkey) {
+          try {
+            // Convert hex string back to Uint8Array
+            if (connectionInfo.clientSecretKeyHex) {
+              const hexString = connectionInfo.clientSecretKeyHex; // Assign to a local variable to help TypeScript
+              const bytes = new Uint8Array(hexString.length / 2);
+              for (let i = 0; i < hexString.length; i += 2) {
+                bytes[i / 2] = parseInt(hexString.substring(i, i + 2), 16);
+              }
+              clientSecretKey = bytes;
+            } else {
+              throw new Error('Client secret key hex is undefined');
+            }
+            clientPubkey = connectionInfo.clientPubkey;
+            console.log(`   Found stored client keys: ${clientPubkey.slice(0, 8)}...${clientPubkey.slice(-8)}`);
+          } catch (error) {
+            console.error(`   Error parsing stored client keys: ${error instanceof Error ? error.message : String(error)}`);
+          }
+        }
+        
+        // Get the alias from the connection info if available
+        const alias = connectionInfo.alias;
+        
+        // Connect to the remote signer
+        const connection = await connectToRemoteSigner(
+          bunkerPointer,
+          (url) => {
+            console.log(`🔐 Authentication required for remote signer: ${userPubkey.slice(0, 8)}...${userPubkey.slice(-8)}`);
+            console.log(`   Auth URL: ${url}`);
+            
+            // Store the auth URL for this pubkey (we know userPubkey is defined here)
+            pendingRemoteSignerAuths[userPubkey as string] = {
+              authUrl: url,
+              timestamp: Date.now()
+            };
+            
+            // Open the auth URL in a new tab
+            if (typeof window !== 'undefined') {
+              window.open(url, '_blank');
+              console.log(`🌐 Opened auth URL in new tab for pubkey: ${userPubkey.slice(0, 8)}...${userPubkey.slice(-8)}`);
+            }
+          },
+          clientSecretKey,
+          clientPubkey,
+          alias // Pass the stored alias if available
+        );
+        
+        if (connection) {
+          console.log(`✅ Successfully reconnected to remote signer for pubkey: ${userPubkey.slice(0, 8)}...${userPubkey.slice(-8)}`);
+          
+          // Set as the active connection
+          activeConnection = connection;
+          activeUserPubkey = userPubkey;
+          
+          // Now try to sign the event again
+          if (activeConnection.signer) {
+            return await activeConnection.signer.signEvent(event);
+          } else {
+            throw new Error('Remote signer connection is not properly initialized');
+          }
+        } else {
+          throw new Error('Failed to reconnect to remote signer');
+        }
+      } catch (reconnectError) {
+        console.error(`❌ Failed to automatically reconnect: ${reconnectError instanceof Error ? reconnectError.message : String(reconnectError)}`);
+        console.error(`   Try reconnecting manually by going to Settings > Manage Profiles`);
+        
+        // Check if there's a pending authentication for this pubkey
+        const pendingAuth = pendingRemoteSignerAuths[userPubkey] ||
+                          pendingRemoteSignerAuths[raw] ||
+                          pendingRemoteSignerAuths[npub];
+        
+        if (pendingAuth) {
+          throw new Error(`Remote signer requires authentication. Please complete the authentication process in the opened browser tab.`);
+        } else {
+          // Try to initialize the connection again
+          try {
+            await initializeActiveProfileConnection();
+            
+            // Check if connection was successful
+            if (activeConnection && activeConnection.signer &&
+                (activeUserPubkey === userPubkey || activeUserPubkey === raw || activeUserPubkey === npub)) {
+              console.log(`✅ Successfully reconnected to remote signer after initialization`);
+              return await activeConnection.signer.signEvent(event);
+            }
+          } catch (initError) {
+            console.error(`❌ Failed to initialize connection: ${initError instanceof Error ? initError.message : String(initError)}`);
+          }
+          
+          throw new Error('Remote signer is not currently connected. Please reconnect to the remote signer.');
+        }
+      }
     } else {
       console.error(`❌ No connection info found for pubkey: ${userPubkey.slice(0, 8)}...${userPubkey.slice(-8)}`);
       console.error(`   Tried original: ${userPubkey.slice(0, 8)}...${userPubkey.slice(-8)}`);
@@ -558,7 +743,7 @@ export async function signEventWithRemoteSigner(
   
   try {
     console.log(`   Signing event with remote signer...`);
-    const result = await connection.signer.signEvent(event);
+    const result = await activeConnection.signer.signEvent(event);
     console.log(`✅ Successfully signed event with remote signer`);
     return result;
   } catch (error) {
@@ -581,10 +766,58 @@ export async function signEventWithRemoteSigner(
 export function saveRemoteSignerConnectionToLocalStorage(
   userPubkey: string,
   bunkerUrl: string,
-  alias?: string
+  alias?: string,
+  clientSecretKey?: Uint8Array,
+  clientPubkey?: string
 ): void {
   // Add to user profiles system
   addRemoteSignerProfileToLocalStorage(userPubkey, bunkerUrl, true, alias);
+  
+  // Also store the connection info in localStorage with both raw pubkey and npub
+  if (typeof window !== 'undefined') {
+    const { raw, npub } = normalizePubkey(userPubkey);
+    const connections = getRemoteSignerConnectionsFromLocalStorage();
+    
+    // Store with both formats to ensure we can find it later
+    const connectionInfo: any = {
+      bunkerUrl: bunkerUrl,
+      timestamp: Date.now(),
+      alias: alias
+    };
+    
+    // If client keys are provided, store them too
+    if (clientSecretKey && clientPubkey) {
+      // Convert Uint8Array to hex string for storage
+      const bytesToHex = (bytes: Uint8Array) => {
+        return Array.from(bytes)
+          .map(b => b.toString(16).padStart(2, '0'))
+          .join('');
+      };
+      
+      connectionInfo.clientSecretKeyHex = bytesToHex(clientSecretKey);
+      connectionInfo.clientPubkey = clientPubkey;
+      console.log(`   Storing client keys for persistence: ${clientPubkey.slice(0, 8)}...${clientPubkey.slice(-8)}`);
+    }
+    
+    // Store with original format
+    connections[userPubkey] = connectionInfo;
+    
+    // Store with raw pubkey if different
+    if (raw !== userPubkey) {
+      connections[raw] = connectionInfo;
+    }
+    
+    // Store with npub if different
+    if (npub !== userPubkey && npub !== raw) {
+      connections[npub] = connectionInfo;
+    }
+    
+    localStorage.setItem('remote_signer_connections', JSON.stringify(connections));
+    console.log(`✅ Stored remote signer connection with multiple keys for easier lookup`);
+    console.log(`   Original: ${userPubkey.slice(0, 8)}...${userPubkey.slice(-8)}`);
+    console.log(`   Raw: ${raw.slice(0, 8)}...${raw.slice(-8)}`);
+    console.log(`   Npub: ${npub.slice(0, 8)}...${npub.slice(-8)}`);
+  }
 }
 
 /**
@@ -597,6 +830,8 @@ export function getRemoteSignerConnectionsFromLocalStorage(): Record<string, {
     relays: string[];
     secret: string | null;
   };
+  clientSecretKeyHex?: string; // Hex-encoded secret key
+  clientPubkey?: string;
   alias?: string;
   timestamp: number;
 }> {
@@ -647,4 +882,37 @@ export function removeRemoteSignerConnectionFromLocalStorage(userPubkey: string)
   }
   
   localStorage.setItem('remote_signer_connections', JSON.stringify(connections));
+}
+
+/**
+ * Manually switch the active remote signer connection
+ * This function should be called when the active profile changes
+ */
+export async function switchActiveRemoteSignerConnection(userPubkey: string): Promise<boolean> {
+  try {
+    console.log(`🔄 Manually switching active remote signer connection to: ${userPubkey.slice(0, 8)}...${userPubkey.slice(-8)}`);
+    
+    // Close the existing connection if there is one
+    if (activeConnection && activeConnection.signer) {
+      console.log(`   Closing existing connection for: ${activeUserPubkey?.slice(0, 8)}...${activeUserPubkey?.slice(-8)}`);
+      await activeConnection.signer.close();
+    }
+    
+    // Reset the active connection
+    activeConnection = null;
+    activeUserPubkey = null;
+    
+    // Check if the new profile is a remote signer
+    if (!isRemoteSignerProfile(userPubkey)) {
+      console.log(`ℹ️ New profile is not a remote signer: ${userPubkey.slice(0, 8)}...${userPubkey.slice(-8)}`);
+      return false;
+    }
+    
+    // Initialize connection for the new active profile
+    const success = await initializeActiveProfileConnection();
+    return success;
+  } catch (error) {
+    console.error(`❌ Failed to switch active remote signer connection: ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
 }

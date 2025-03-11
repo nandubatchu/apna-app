@@ -45,7 +45,7 @@ import {
 import { getPublicKey, nip19 } from "nostr-tools"
 import { User, KeyRound, Shuffle, Link, AlertTriangle } from "lucide-react"
 import { GenerateKeyPair } from "@/lib/nostr/events"
-import { parseRemoteSignerInput, connectToRemoteSigner, disconnectFromRemoteSigner } from "@/lib/nostr/nip46"
+import { parseRemoteSignerInput, connectToRemoteSigner, disconnectFromRemoteSigner, switchActiveRemoteSignerConnection, saveRemoteSignerConnectionToLocalStorage } from "@/lib/nostr/nip46"
 
 const nsecFormSchema = z.object({
   nsec: z.string().startsWith("nsec", {
@@ -192,24 +192,26 @@ export default function ProfileManager({ open, onOpenChange, onProfileChange }: 
         (url) => {
           // Handle auth URL if needed
           setAuthUrl(url)
-        }
+        },
+        undefined, // No existing client secret key
+        undefined, // No existing client pubkey
+        values.alias // Pass the alias parameter
       )
 
       if (!connection || !connection.userPubkey) {
         throw new Error("Failed to connect to remote signer")
       }
 
-      // Add to user profiles system
       // connection.userPubkey is the raw pubkey, so we need to encode it as npub
       const nip19 = require('nostr-tools/nip19');
       const npub = nip19.npubEncode(connection.userPubkey);
       
-      addRemoteSignerProfileToLocalStorage(
-        npub, // Pass the encoded npub
-        values.bunkerUrl,
-        true, // Set as active
-        values.alias
-      )
+      console.log(`Remote signer connection established:`);
+      console.log(`Raw pubkey: ${connection.userPubkey.slice(0, 8)}...${connection.userPubkey.slice(-8)}`);
+      console.log(`Npub: ${npub.slice(0, 8)}...${npub.slice(-8)}`);
+      
+      // The connectToRemoteSigner function already handles saving the connection to localStorage
+      console.log(`Remote signer connection established and saved to localStorage`);
 
       // Reset form and update UI
       remoteSignerForm.reset()
@@ -227,13 +229,35 @@ export default function ProfileManager({ open, onOpenChange, onProfileChange }: 
     }
   }
 
-  function handleSwitchProfile(npub: string) {
-    setActiveUserProfile(npub)
-    loadProfiles()
+  async function handleSwitchProfile(npub: string) {
+    console.log(`Switching to profile: ${npub.slice(0, 8)}...${npub.slice(-8)}`);
+    
+    // First set the active profile in localStorage
+    setActiveUserProfile(npub);
+    
+    // Check if this is a remote signer profile
+    const profile = getUserProfileByNpub(npub);
+    if (profile?.isRemoteSigner) {
+      console.log(`This is a remote signer profile, initializing connection...`);
+      
+      try {
+        // Explicitly switch the active remote signer connection
+        await switchActiveRemoteSignerConnection(npub);
+        console.log(`Successfully switched remote signer connection`);
+      } catch (error) {
+        console.error(`Error switching remote signer connection: ${error instanceof Error ? error.message : String(error)}`);
+        setError(`Failed to switch remote signer connection: ${error instanceof Error ? error.message : "Unknown error"}`);
+      }
+    } else {
+      console.log(`This is a local profile, no remote signer connection needed`);
+    }
+    
+    // Reload profiles to update UI
+    loadProfiles();
     
     // Notify parent component if needed
     if (onProfileChange) {
-      onProfileChange()
+      onProfileChange();
     }
   }
 
