@@ -374,14 +374,14 @@ export const GetFeed = async (npub: string, feedType: string, since?: number, un
             return fetchAllFromAPI({
                 ...baseFilter,
                 authors: followingAuthors
-            });
+            }, true);
         }
             
         case "NOTES_FEED":
             return fetchAllFromAPI({
                 ...baseFilter,
                 authors: [authorRaw]
-            });
+            }, true);
             
         default:
             return [];
