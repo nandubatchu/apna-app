@@ -492,36 +492,41 @@ export default function ProfileManager({ open, onOpenChange, onProfileChange }: 
                             : 'border-gray-200'
                         }`}
                       >
-                        <div className="flex items-center gap-2 mb-2">
-                          {profile.alias ? (
-                            <>
-                              <span className="text-sm font-medium">
-                                {profile.alias}
+                        <div className="flex flex-col gap-2 mb-2">
+                          <div>
+                            {profile.alias ? (
+                              <>
+                                <span className="text-sm font-medium">
+                                  {profile.alias}
+                                </span>
+                                <span className="font-mono text-xs text-gray-600 ml-2">
+                                  {profile.npub.slice(0, 6)}...{profile.npub.slice(-6)}
+                                </span>
+                              </>
+                            ) : (
+                              <span className="font-mono text-sm">
+                                {profile.npub.slice(0, 8)}...{profile.npub.slice(-8)}
                               </span>
-                              <span className="font-mono text-xs text-gray-600">
-                                {profile.npub.slice(0, 6)}...{profile.npub.slice(-6)}
+                            )}
+                          </div>
+                          
+                          <div className="flex flex-wrap gap-2">
+                            {profile.npub === activeNpub && (
+                              <span className="text-xs bg-[#368564] text-white px-2 py-0.5 rounded-full">
+                                Active
                               </span>
-                            </>
-                          ) : (
-                            <span className="font-mono text-sm">
-                              {profile.npub.slice(0, 8)}...{profile.npub.slice(-8)}
-                            </span>
-                          )}
-                          {profile.npub === activeNpub && (
-                            <span className="text-xs bg-[#368564] text-white px-2 py-0.5 rounded-full">
-                              Active
-                            </span>
-                          )}
-                          {profile.isRemoteSigner && (
-                            <span className="text-xs bg-blue-500 text-white px-2 py-0.5 rounded-full">
-                              Remote
-                            </span>
-                          )}
-                          {profile.npub === activeNpub && profile.isRemoteSigner && (
-                            <span className={`text-xs ${activeConnectionStatus ? 'bg-green-500' : 'bg-red-500'} text-white px-2 py-0.5 rounded-full`}>
-                              {activeConnectionStatus ? 'Connected' : 'Disconnected'}
-                            </span>
-                          )}
+                            )}
+                            {profile.isRemoteSigner && (
+                              <span className="text-xs bg-blue-500 text-white px-2 py-0.5 rounded-full">
+                                Remote
+                              </span>
+                            )}
+                            {profile.npub === activeNpub && profile.isRemoteSigner && (
+                              <span className={`text-xs ${activeConnectionStatus ? 'bg-green-500' : 'bg-red-500'} text-white px-2 py-0.5 rounded-full`}>
+                                {activeConnectionStatus ? 'Connected' : 'Disconnected'}
+                              </span>
+                            )}
+                          </div>
                         </div>
                         <div className="flex flex-wrap gap-2">
                           {profile.npub !== activeNpub && (
