@@ -45,7 +45,7 @@ import {
 import { getPublicKey, nip19 } from "nostr-tools"
 import { User, KeyRound, Shuffle, Link, AlertTriangle } from "lucide-react"
 import { GenerateKeyPair } from "@/lib/nostr/events"
-import { parseRemoteSignerInput, connectToRemoteSigner, disconnectFromRemoteSigner, switchActiveRemoteSignerConnection, saveRemoteSignerConnectionToLocalStorage } from "@/lib/nostr/nip46"
+import { parseRemoteSignerInput, connectToRemoteSigner, disconnectFromRemoteSigner, switchActiveRemoteSignerConnection, saveRemoteSignerConnectionToLocalStorage, isRemoteSignerConnected } from "@/lib/nostr/nip46"
 
 const nsecFormSchema = z.object({
   nsec: z.string().startsWith("nsec", {
@@ -77,6 +77,7 @@ export default function ProfileManager({ open, onOpenChange, onProfileChange }: 
   const [confirmRemoveNpub, setConfirmRemoveNpub] = useState<string | null>(null)
   const [duplicateProfile, setDuplicateProfile] = useState<IUserKeyPair | null>(null)
   const [pendingImport, setPendingImport] = useState<{nsec: string, npub: string, alias?: string} | null>(null)
+  const [activeConnectionStatus, setActiveConnectionStatus] = useState<boolean>(false)
 
   // Load profiles on mount and when they change
   const loadProfiles = () => {
@@ -86,6 +87,14 @@ export default function ProfileManager({ open, onOpenChange, onProfileChange }: 
     const keyPair = getKeyPairFromLocalStorage()
     if (keyPair && keyPair.npub) {
       setActiveNpub(keyPair.npub)
+      
+      // Check connection status for active profile if it's a remote signer
+      const activeProfile = getUserProfileByNpub(keyPair.npub)
+      if (activeProfile?.isRemoteSigner) {
+        setActiveConnectionStatus(isRemoteSignerConnected(keyPair.npub))
+      } else {
+        setActiveConnectionStatus(false)
+      }
     }
   }
 
@@ -213,6 +222,9 @@ export default function ProfileManager({ open, onOpenChange, onProfileChange }: 
       // The connectToRemoteSigner function already handles saving the connection to localStorage
       console.log(`Remote signer connection established and saved to localStorage`);
 
+      // Update connection status for the new remote signer
+      setActiveConnectionStatus(true);
+      
       // Reset form and update UI
       remoteSignerForm.reset()
       loadProfiles()
@@ -244,12 +256,17 @@ export default function ProfileManager({ open, onOpenChange, onProfileChange }: 
         // Explicitly switch the active remote signer connection
         await switchActiveRemoteSignerConnection(npub);
         console.log(`Successfully switched remote signer connection`);
+        
+        // Update connection status
+        setActiveConnectionStatus(isRemoteSignerConnected(npub));
       } catch (error) {
         console.error(`Error switching remote signer connection: ${error instanceof Error ? error.message : String(error)}`);
         setError(`Failed to switch remote signer connection: ${error instanceof Error ? error.message : "Unknown error"}`);
+        setActiveConnectionStatus(false);
       }
     } else {
       console.log(`This is a local profile, no remote signer connection needed`);
+      setActiveConnectionStatus(false);
     }
     
     // Reload profiles to update UI
@@ -498,6 +515,11 @@ export default function ProfileManager({ open, onOpenChange, onProfileChange }: 
                           {profile.isRemoteSigner && (
                             <span className="text-xs bg-blue-500 text-white px-2 py-0.5 rounded-full">
                               Remote
+                            </span>
+                          )}
+                          {profile.npub === activeNpub && profile.isRemoteSigner && (
+                            <span className={`text-xs ${activeConnectionStatus ? 'bg-green-500' : 'bg-red-500'} text-white px-2 py-0.5 rounded-full`}>
+                              {activeConnectionStatus ? 'Connected' : 'Disconnected'}
                             </span>
                           )}
                         </div>
