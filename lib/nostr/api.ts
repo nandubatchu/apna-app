@@ -344,20 +344,24 @@ export const GetNpubProfile = async (npub: string) => {
     }
 }
 
-export const GetNoteReactions = async (noteId: string, revalidate: boolean=false) => {
+export const GetNoteReactions = async (noteId: string, revalidate: boolean=false, since?: number) => {
     const noteIdRaw = noteId.includes("note1") ? nip19.decode(noteId).data as string : noteId
-    return fetchAllFromAPI({
+    const filter: Filter = {
         kinds: [7],
         "#e": [noteIdRaw],
-    }, revalidate, [noteIdRaw])
+    }
+    if (since) filter.since = since;
+    return fetchAllFromAPI(filter, revalidate, [noteIdRaw])
 }
 
-export const GetNoteReposts = async (noteId: string, revalidate: boolean=false) => {
+export const GetNoteReposts = async (noteId: string, revalidate: boolean=false, since?: number) => {
     const noteIdRaw = noteId.includes("note1") ? nip19.decode(noteId).data as string : noteId
-    return fetchAllFromAPI({
+    const filter: Filter = {
         kinds: [6],
         "#e": [noteIdRaw],
-    }, revalidate, [noteIdRaw])
+    }
+    if (since) filter.since = since;
+    return fetchAllFromAPI(filter, revalidate, [noteIdRaw])
 }
 
 export const GetFeed = async (npub: string, feedType: string, since?: number, until?: number, limit?: number) => {

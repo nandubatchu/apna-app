@@ -16,7 +16,7 @@ const loadFeedbacks = async () => {
       // Load raw reactions for each feedback in parallel
       const reactionsMap: any = {}
       const reactionPromises = replies.map(async (reply: any) => {
-        const reactions = await GetNoteReactions(reply.id)
+        const reactions = await GetNoteReactions(reply.id, false, undefined)
         reactionsMap[reply.id] = reactions
       })
       

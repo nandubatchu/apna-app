@@ -170,11 +170,11 @@ const methodHandlers: IHostMethodHandlers = {
     fetchUserFeed(npub, feedType, since, until, limit) {
       return GetFeed(npub, feedType, since, until, limit);
     },
-    fetchNoteLikes(noteId) {
-      return GetNoteReactions(noteId);
+    fetchNoteLikes(noteId, since) {
+      return GetNoteReactions(noteId, true, since);
     },
-    fetchNoteReposts(noteId) {
-      return GetNoteReposts(noteId);
+    fetchNoteReposts(noteId, since) {
+      return GetNoteReposts(noteId, true, since);
     },
     subscribeToUserNotifications(onevent) {
       const existingKeyPair = getKeyPairFromLocalStorage();

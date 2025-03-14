@@ -145,7 +145,7 @@ export async function fetchAppListAction(revalidate = false): Promise<AppDetails
                     ve.pubkey === event.pubkey &&
                     ve.appURL === event.appURL
                 );
-                const reactions = await GetNoteReactions(originalEvent?.id || event.id, revalidate);
+                const reactions = await GetNoteReactions(originalEvent?.id || event.id, revalidate, undefined);
                 const avgRating = await calculateAverageRating(reactions);
                 
                 appList.push({
