@@ -7,7 +7,7 @@ import { Fab } from "@/components/ui/fab";
 import { IHostMethodHandlers } from "@apna/sdk";
 import { FollowNpub, UnfollowNpub, PublishNote, UpdateProfile, SubscribeToFeed,
   SubscribeToNotifications, RepostNote, ReactToNote, ReplyToNote, GetNpubProfile,
-  GetNpubProfileMetadata, GetNote, GetNoteReplies, GetFeed } from "@/lib/nostr";
+  GetNpubProfileMetadata, GetNote, GetNoteReplies, GetFeed, GetNoteReactions, GetNoteReposts } from "@/lib/nostr";
 import { publishEvent } from "@/lib/nostr/events";
 import {
   getKeyPairFromLocalStorage,
@@ -28,22 +28,6 @@ const methodHandlers: IHostMethodHandlers = {
         throw new Error("No active user profile found");
       }
       return GetNpubProfile(existingKeyPair.npub);
-    },
-    getAvailableUserProfiles() {
-      const profiles = getAllUserProfilesFromLocalStorage();
-      if (profiles.length === 0) return [];
-      return Promise.all(profiles.map((profile: IUserKeyPair) => GetNpubProfile(profile.npub)));
-    },
-    switchUserProfile(npub) {
-      const profile = getUserProfileByNpub(npub);
-      if (!profile) {
-        throw new Error(`Profile with npub ${npub} not found`);
-      }
-      
-      // Set as active profile
-      setActiveUserProfile(npub);
-      
-      return GetNpubProfile(npub);
     },
     fetchUserMetadata(npub) {
       return GetNpubProfileMetadata(npub)
@@ -185,6 +169,12 @@ const methodHandlers: IHostMethodHandlers = {
     },
     fetchUserFeed(npub, feedType, since, until, limit) {
       return GetFeed(npub, feedType, since, until, limit);
+    },
+    fetchNoteLikes(noteId) {
+      return GetNoteReactions(noteId);
+    },
+    fetchNoteReposts(noteId) {
+      return GetNoteReposts(noteId);
     },
     subscribeToUserNotifications(onevent) {
       const existingKeyPair = getKeyPairFromLocalStorage();

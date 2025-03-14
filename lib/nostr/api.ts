@@ -352,6 +352,14 @@ export const GetNoteReactions = async (noteId: string, revalidate: boolean=false
     }, revalidate, [noteIdRaw])
 }
 
+export const GetNoteReposts = async (noteId: string, revalidate: boolean=false) => {
+    const noteIdRaw = noteId.includes("note1") ? nip19.decode(noteId).data as string : noteId
+    return fetchAllFromAPI({
+        kinds: [6],
+        "#e": [noteIdRaw],
+    }, revalidate, [noteIdRaw])
+}
+
 export const GetFeed = async (npub: string, feedType: string, since?: number, until?: number, limit?: number) => {
     const authorRaw = npub.includes("npub") ? nip19.decode(npub).data as string : npub
     const baseFilter: Filter = {
