@@ -245,7 +245,7 @@ export const GetNoteReplies = async (noteId: string, direct: boolean = false) =>
     const replies = await fetchAllFromAPI({
         kinds: [1],
         "#e": [noteIdRaw]
-    }, false, [noteIdRaw]);
+    }, false, [noteIdRaw], false, 60, true);
 
     if (direct) {
         // Filter for direct replies only - where the last "e" tag marked "reply" matches the note ID
@@ -287,15 +287,15 @@ export const GetNpubProfileMetadata = async (npub: string) => {
     const metadataContent = await fetchAllFromAPI({
         kinds: [0],
         authors: [pubkey]
-    }, false, [pubkey])
-    return JSON.parse(metadataContent[0].content || {})
+    }, false, [pubkey], true, 60, true)
+    return JSON.parse(metadataContent.content || {})
 }
 
 export const GetNote = async (noteId: string) => {
     const noteIdRaw = normalizeNoteId(noteId)
     return (await fetchAllFromAPI({
         ids: [noteIdRaw]
-    }, undefined, undefined, true)) as NostrEvent & {kind: 1}
+    }, undefined, undefined, true, undefined, true)) as NostrEvent & {kind: 1}
 }
 
 const getFollowing = async (npub: string): Promise<string[]> => {
@@ -340,7 +340,7 @@ export const GetNoteReactions = async (noteId: string, revalidate: boolean=false
         "#e": [noteIdRaw],
     }
     if (since) filter.since = since;
-    return fetchAllFromAPI(filter, revalidate, [noteIdRaw])
+    return fetchAllFromAPI(filter, revalidate, [noteIdRaw], false, 60, true)
 }
 
 export const GetNoteReposts = async (noteId: string, revalidate: boolean=false, since?: number) => {
@@ -350,7 +350,7 @@ export const GetNoteReposts = async (noteId: string, revalidate: boolean=false, 
         "#e": [noteIdRaw],
     }
     if (since) filter.since = since;
-    return fetchAllFromAPI(filter, revalidate, [noteIdRaw])
+    return fetchAllFromAPI(filter, revalidate, [noteIdRaw], false, 60, true)
 }
 
 export const GetFeed = async (npub: string, feedType: string, since?: number, until?: number, limit?: number) => {

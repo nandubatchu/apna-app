@@ -60,7 +60,14 @@ const hashCode = (str: string): string => {
     return hash.toString();
 };
 
-export const fetchAllFromAPI = async (filter: Filter, revalidate=false, tags: string[] = [], isSingleEvent: boolean = false) => {
+export const fetchAllFromAPI = async (
+    filter: Filter,
+    revalidate=false,
+    tags: string[] = [],
+    isSingleEvent: boolean = false,
+    revalidateInSeconds?: number,
+    publicCache: boolean = false
+) => {
     let url = `${PUBLIC_BASE_URL}/api/nostr/pool/get?`
     if (isSingleEvent) {
         url = `${url}isSingleEvent=1&`
@@ -70,6 +77,12 @@ export const fetchAllFromAPI = async (filter: Filter, revalidate=false, tags: st
     }
     if (tags.length > 0) {
         url = `${url}tags=${tags.join(",")}&`
+    }
+    if (revalidateInSeconds !== undefined) {
+        url = `${url}revalidateInSeconds=${revalidateInSeconds}&`
+    }
+    if (publicCache) {
+        url = `${url}publicCache=1&`
     }
     url = `${url}query=${encodeURIComponent(JSON.stringify({
         relays: DEFAULT_RELAYS,
