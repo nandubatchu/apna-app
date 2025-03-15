@@ -303,7 +303,10 @@ export const GetNpubProfileMetadata = async (npub: string) => {
 }
 
 export const GetNote = async (noteId: string) => {
-    const noteIdRaw = noteId.includes("note1") ? nip19.decode(noteId).data as string : noteId
+    let noteIdRaw = noteId.includes("note1") ? nip19.decode(noteId).data as string : noteId
+    if (noteId.includes("nevent")) {
+        noteIdRaw = (nip19.decode(noteId).data as any).id as string
+    }
     return (await fetchAllFromAPI({
         ids: [noteIdRaw]
     }, undefined, undefined, true)) as NostrEvent & {kind: 1}
