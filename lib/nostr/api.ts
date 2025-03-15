@@ -1,6 +1,7 @@
 import { Event as NostrEvent, Filter, getPublicKey } from 'nostr-tools'
 import * as nip19 from 'nostr-tools/nip19'
 import { fetchAllFromAPI, subscribeToEvents, filterTagValues, DEFAULT_RELAYS, pool } from './core'
+import { normalizeNoteId, normalizePublicKey } from './utils'
 import { publishKind0, publishKind1, publishKind3, publishKind6, publishKind7, GenerateKeyPair } from './events'
 import * as crypto from 'crypto'
 
@@ -27,16 +28,12 @@ export const InitialiseProfile = async (nsec: string) => {
 }
 
 export const FollowNpub = async (npub: string, nsecOrNpub: string) => {
-    const targetPubkey = npub.includes("npub") ? nip19.decode(npub).data as string : npub
+    const targetPubkey = normalizePublicKey(npub)
     
     // Determine the author pubkey based on whether nsecOrNpub is an nsec or npub
     let authorPubkey: string;
     if (nsecOrNpub.startsWith('npub')) {
-        const decodedNpub = nip19.decode(nsecOrNpub);
-        if (decodedNpub.type !== "npub") {
-            throw new Error("invalid npub");
-        }
-        authorPubkey = decodedNpub.data as string;
+        authorPubkey = normalizePublicKey(nsecOrNpub);
     } else {
         authorPubkey = getPublicKey(nip19.decode(nsecOrNpub).data as Uint8Array);
     }
@@ -63,11 +60,7 @@ export const UnfollowNpub = async (npub: string, nsecOrNpub: string) => {
     // Determine the author pubkey based on whether nsecOrNpub is an nsec or npub
     let authorPubkey: string;
     if (nsecOrNpub.startsWith('npub')) {
-        const decodedNpub = nip19.decode(nsecOrNpub);
-        if (decodedNpub.type !== "npub") {
-            throw new Error("invalid npub");
-        }
-        authorPubkey = decodedNpub.data as string;
+        authorPubkey = normalizePublicKey(nsecOrNpub);
     } else {
         authorPubkey = getPublicKey(nip19.decode(nsecOrNpub).data as Uint8Array);
     }
@@ -81,7 +74,7 @@ export const UnfollowNpub = async (npub: string, nsecOrNpub: string) => {
         return
     }
     
-    const targetPubkey = npub.includes("npub") ? nip19.decode(npub).data as string : npub;
+    const targetPubkey = normalizePublicKey(npub);
     const newTags = existingContacts.tags.filter((item: string[]) => item[1] !== targetPubkey);
     
     return publishKind3(nsecOrNpub, newTags)
@@ -100,7 +93,7 @@ export const PublishNote = async (content: any, nsecOrNpub: string) => {
 }
 
 export const RepostNote = async (noteId: string, quoteContent: string, nsecOrNpub: string) => {
-    const noteIdRaw = noteId.includes("note1") ? nip19.decode(noteId).data as string : noteId
+    const noteIdRaw = normalizeNoteId(noteId)
     const note: any = await fetchAllFromAPI({
         ids: [noteIdRaw]
     }, undefined, undefined, true)
@@ -138,7 +131,7 @@ export const ReactToNote = async (noteId: string, nsecOrNpub: string, content: s
         content = "+"; // Default to "+" if empty
     }
     
-    const noteIdRaw = noteId.includes("note1") ? nip19.decode(noteId).data as string : noteId
+    const noteIdRaw = normalizeNoteId(noteId)
     const note: any = await fetchAllFromAPI({
         ids: [noteIdRaw]
     }, undefined, undefined, true)
@@ -160,7 +153,7 @@ export const ReplyToNote = async (noteId: string, content: string, nsecOrNpub: s
         throw new Error('Reply content cannot be empty')
     }
     
-    const noteIdRaw = noteId.includes("note1") ? nip19.decode(noteId).data as string : noteId
+    const noteIdRaw = normalizeNoteId(noteId)
     const note: any = await fetchAllFromAPI({
         ids: [noteIdRaw]
     }, undefined, undefined, true)
@@ -187,11 +180,7 @@ export const UpdateProfile = async (profileMetadata: any, nsec: string) => {
     // If nsec is actually an npub (for remote signer), decode it differently
     let npub: string;
     if (nsec.startsWith('npub')) {
-        const decodedNpub = nip19.decode(nsec);
-        if (decodedNpub.type !== "npub") {
-            throw new Error("invalid npub");
-        }
-        npub = decodedNpub.data as string;
+        npub = normalizePublicKey(nsec);
     } else {
         npub = getPublicKey(nip19.decode(nsec).data as Uint8Array);
     }
@@ -212,7 +201,7 @@ export const UpdateProfile = async (profileMetadata: any, nsec: string) => {
 }
 
 export const SubscribeToFeed = async (npub: string, feedType: string, callback: (note: NostrEvent) => void) => {
-    const pubkey = nip19.decode(npub).data as string
+    const pubkey = normalizePublicKey(npub)
     
     switch (feedType) {
         case "FOLLOWING_FEED": {
@@ -252,7 +241,7 @@ export const SubscribeToNotifications = async (callback: (note: NostrEvent) => v
 }
 
 export const GetNoteReplies = async (noteId: string, direct: boolean = false) => {
-    const noteIdRaw = noteId.includes("note1") ? nip19.decode(noteId).data as string : noteId
+    const noteIdRaw = normalizeNoteId(noteId)
     const replies = await fetchAllFromAPI({
         kinds: [1],
         "#e": [noteIdRaw]
@@ -270,7 +259,7 @@ export const GetNoteReplies = async (noteId: string, direct: boolean = false) =>
 }
 
 export const GetNoteZaps = async (noteId: string) => {
-    const noteIdRaw = noteId.includes("note1") ? nip19.decode(noteId).data as string : noteId
+    const noteIdRaw = normalizeNoteId(noteId)
     const filter: Filter = {
         kinds: [9735],
         "#e": [noteIdRaw]
@@ -279,7 +268,7 @@ export const GetNoteZaps = async (noteId: string) => {
 }
 
 const getNprofile = async (npub: string) => {
-    const pubkey = npub.includes("npub") ? nip19.decode(npub).data as string : npub
+    const pubkey = normalizePublicKey(npub)
     const config = await fetchAllFromAPI({
         kinds: [3],
         authors: [pubkey]
@@ -294,7 +283,7 @@ const getNprofile = async (npub: string) => {
 }
 
 export const GetNpubProfileMetadata = async (npub: string) => {
-    const pubkey = npub.includes("npub") ? nip19.decode(npub).data as string : npub
+    const pubkey = normalizePublicKey(npub)
     const metadataContent = await fetchAllFromAPI({
         kinds: [0],
         authors: [pubkey]
@@ -303,17 +292,14 @@ export const GetNpubProfileMetadata = async (npub: string) => {
 }
 
 export const GetNote = async (noteId: string) => {
-    let noteIdRaw = noteId.includes("note1") ? nip19.decode(noteId).data as string : noteId
-    if (noteId.includes("nevent")) {
-        noteIdRaw = (nip19.decode(noteId).data as any).id as string
-    }
+    const noteIdRaw = normalizeNoteId(noteId)
     return (await fetchAllFromAPI({
         ids: [noteIdRaw]
     }, undefined, undefined, true)) as NostrEvent & {kind: 1}
 }
 
 const getFollowing = async (npub: string): Promise<string[]> => {
-    const pubkey = npub.includes("npub") ? nip19.decode(npub).data as string : npub
+    const pubkey = normalizePublicKey(npub)
     const following = await fetchAllFromAPI({
         kinds: [3],
         authors: [pubkey]
@@ -322,7 +308,7 @@ const getFollowing = async (npub: string): Promise<string[]> => {
 }   
 
 const getFollowers = async (npub: string): Promise<string[]> => {
-    const pubkey = npub.includes("npub") ? nip19.decode(npub).data as string : npub
+    const pubkey = normalizePublicKey(npub)
     const filter: Filter = {
         kinds: [3],
         "#p": [pubkey]
@@ -348,7 +334,7 @@ export const GetNpubProfile = async (npub: string) => {
 }
 
 export const GetNoteReactions = async (noteId: string, revalidate: boolean=false, since?: number) => {
-    const noteIdRaw = noteId.includes("note1") ? nip19.decode(noteId).data as string : noteId
+    const noteIdRaw = normalizeNoteId(noteId)
     const filter: Filter = {
         kinds: [7],
         "#e": [noteIdRaw],
@@ -358,7 +344,7 @@ export const GetNoteReactions = async (noteId: string, revalidate: boolean=false
 }
 
 export const GetNoteReposts = async (noteId: string, revalidate: boolean=false, since?: number) => {
-    const noteIdRaw = noteId.includes("note1") ? nip19.decode(noteId).data as string : noteId
+    const noteIdRaw = normalizeNoteId(noteId)
     const filter: Filter = {
         kinds: [6],
         "#e": [noteIdRaw],
@@ -368,7 +354,7 @@ export const GetNoteReposts = async (noteId: string, revalidate: boolean=false, 
 }
 
 export const GetFeed = async (npub: string, feedType: string, since?: number, until?: number, limit?: number) => {
-    const authorRaw = npub.includes("npub") ? nip19.decode(npub).data as string : npub
+    const authorRaw = normalizePublicKey(npub)
     const baseFilter: Filter = {
         kinds: [1],
         limit: limit || 20
