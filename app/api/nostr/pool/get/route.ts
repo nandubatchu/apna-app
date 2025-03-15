@@ -29,13 +29,13 @@ const fetchFromRelay = async (relays: string[], filter: any, isSingleEvent: bool
     return result
 }
 
-const fetchFromRelayCached = async (relays: string[], filter: any, isSingleEvent: boolean, tags: string[] = []) => {
+const fetchFromRelayCached = async (relays: string[], filter: any, isSingleEvent: boolean, tags: string[] = [], revalidateInSeconds?: number) => {
     const tag = generateSHA256Digest(`${JSON.stringify(relays)}:${JSON.stringify(filter)}:${isSingleEvent}`)
     const result = unstable_cache(
         async () => fetchFromRelay(relays, filter, isSingleEvent),
         [tag],
         {
-            revalidate: 3600,
+            revalidate: revalidateInSeconds || 3600,
             tags: [tag, ...tags]
         }
     )
@@ -47,6 +47,10 @@ export async function GET(request: NextRequest) {
     const tags = searchParams.get('tags')?.split(",")
     const isSingleEvent = Boolean(searchParams.get('isSingleEvent'))
     const query = searchParams.get('query')
+    const revalidateInSeconds = searchParams.get('revalidateInSeconds')
+        ? parseInt(searchParams.get('revalidateInSeconds')!, 10)
+        : undefined
+    const publicCache = Boolean(searchParams.get('publicCache'))
 
     if (!query) {
         return new Response("Bad request", { status: 400 })
@@ -58,12 +62,13 @@ export async function GET(request: NextRequest) {
     if (noCache) {
         revalidateTag(generateSHA256Digest(`${JSON.stringify(relays)}:${JSON.stringify(filter)}:${isSingleEvent}`))
     }
-    const result = await fetchFromRelayCached(relays, filter, isSingleEvent, tags)
+    const result = await fetchFromRelayCached(relays, filter, isSingleEvent, tags, revalidateInSeconds)
     console.log(generateSHA256Digest(`${JSON.stringify(relays)}:${JSON.stringify(filter)}:${isSingleEvent}`), filter)
 
     const headers: any = {}
-    if (!noCache) {
-        // headers['Cache-Control'] = 'public, s-maxage=60, stale-while-revalidate=60'
+    if (!noCache && publicCache) {
+        const cacheTime = revalidateInSeconds || 3600
+        headers['Cache-Control'] = `public, s-maxage=${cacheTime}, stale-while-revalidate=60`
     }
     return new Response(JSON.stringify(result), {
         status: 200,
