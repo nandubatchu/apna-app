@@ -1,17 +1,20 @@
 "use server";
 
 import { NextRequest, NextResponse } from "next/server";
+import { ChatMessage } from "@/lib/generatedAppsDB";
+import { createInitialMessages } from "@/lib/utils/htmlTemplates";
 
 const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
 
 export async function POST(request: NextRequest) {
   try {
-    const { prompt } = await request.json();
+    const { prompt, messages } = await request.json();
 
-    if (!prompt) {
+    // Check if either prompt or messages is provided
+    if (!prompt && (!messages || messages.length === 0)) {
       return NextResponse.json(
-        { error: "Prompt is required" },
+        { error: "Either prompt or messages is required" },
         { status: 400 }
       );
     }
@@ -23,60 +26,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const promptTemplate = `
-<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <title>Apna SDK ESM Example</title>
-  </head>
-  <body>
-    <h1>Active User Profile</h1>
-    <div id="user-profile">Loading user profile...</div>
-
-    <!-- Import Apna SDK as ESM -->
-    
-    <script type="module">
-      import { ApnaApp } from 'https://cdn.jsdelivr.net/npm/@apna/sdk@0.1.39/+esm'
-
-      async function init() {
-        try {
-          // Initialize Apna SDK
-          const apna = new ApnaApp({ appId: "your-mini-app-id" });
-
-          // Get active user profile
-          const userProfile = await apna.nostr.getActiveUserProfile();
-
-
-          // Display the profile
-          const profileDiv = document.getElementById("user-profile");
-          if (userProfile) {
-            profileDiv.innerHTML = \`
-              <p><strong>nProfile:</strong> \${userProfile.nprofile}</p>
-              <p><strong>Name:</strong> \${userProfile.metadata.name}</p>
-              <p><strong>About:</strong> \${userProfile.metadata.about}</p>
-              <p><strong>Followers:</strong> \${userProfile.followers.length}</p>
-              <p><strong>Following:</strong> \${userProfile.following.length}</p>
-            \`;
-          } else {
-            profileDiv.textContent = "No active user profile found.";
-          }
-        } catch (error) {
-          console.error("Error fetching user profile:", error);
-          document.getElementById("user-profile").textContent =
-            "Failed to load user profile.";
-        }
-      };
-
-      window.onload = init
-    </script>
-  </body>
-</html>
-
-
-Improve the above html template to be visually pleasing and more functional and also ${prompt}
-
-`;
+    // Use provided messages or create initial messages from prompt
+    const chatMessages = messages || createInitialMessages(prompt);
 
     const response = await fetch(OPENROUTER_API_URL, {
       method: "POST",
@@ -88,12 +39,7 @@ Improve the above html template to be visually pleasing and more functional and 
       },
       body: JSON.stringify({
         model: "anthropic/claude-3-sonnet-20240229",
-        messages: [
-          {
-            role: "user",
-            content: promptTemplate,
-          },
-        ],
+        messages: chatMessages,
         max_tokens: 4000,
       }),
     });
@@ -112,7 +58,35 @@ Improve the above html template to be visually pleasing and more functional and 
     // Extract HTML content from the response
     const htmlContent = extractHtmlFromResponse(generatedContent);
 
-    return NextResponse.json({ html: htmlContent });
+    // Create updated messages array with the assistant's response
+    // Preserve any system message at the beginning of the conversation
+    let updatedMessages = [];
+    
+    // If the first message is a system message, keep it at the beginning
+    if (chatMessages.length > 0 && chatMessages[0].role === 'system') {
+      updatedMessages = [
+        chatMessages[0],
+        ...chatMessages.slice(1),
+        {
+          role: 'assistant',
+          content: generatedContent
+        }
+      ];
+    } else {
+      // Otherwise just append the new message
+      updatedMessages = [
+        ...chatMessages,
+        {
+          role: 'assistant',
+          content: generatedContent
+        }
+      ];
+    }
+
+    return NextResponse.json({
+      html: htmlContent,
+      messages: updatedMessages
+    });
   } catch (error) {
     console.error("Error generating HTML:", error);
     return NextResponse.json(

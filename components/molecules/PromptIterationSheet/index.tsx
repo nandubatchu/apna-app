@@ -11,57 +11,77 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { GeneratedApp } from "@/lib/generatedAppsDB";
+import { ChatMessage } from "@/lib/generatedAppsDB";
 
 interface PromptIterationSheetProps {
   isOpen: boolean;
   onClose: () => void;
-  originalPrompt: string;
-  onSubmit: (followUpPrompt: string) => Promise<void>;
+  messages: ChatMessage[];
+  onSubmit: (newMessage: string) => Promise<void>;
   isLoading?: boolean;
 }
 
 export default function PromptIterationSheet({
   isOpen,
   onClose,
-  originalPrompt,
+  messages,
   onSubmit,
   isLoading = false,
 }: PromptIterationSheetProps) {
-  const [followUpPrompt, setFollowUpPrompt] = useState("");
+  const [newMessage, setNewMessage] = useState("");
 
   const handleSubmit = async () => {
-    if (!followUpPrompt.trim()) return;
+    if (!newMessage.trim()) return;
     
-    await onSubmit(followUpPrompt);
-    setFollowUpPrompt(""); // Clear the input after submission
+    await onSubmit(newMessage);
+    setNewMessage(""); // Clear the input after submission
   };
 
   return (
     <Sheet open={isOpen} onOpenChange={onClose}>
-      <SheetContent side="bottom" className="h-[400px] overflow-y-auto">
+      <SheetContent side="bottom" className="h-[500px] overflow-y-auto">
         <SheetHeader>
           <SheetTitle>Iterate on Generated App</SheetTitle>
           <SheetDescription>
-            Provide a follow-up prompt to improve or modify the generated app
+            Continue the conversation to improve or modify the generated app
           </SheetDescription>
         </SheetHeader>
         
         <div className="py-4 space-y-4">
           <div className="space-y-2">
-            <h3 className="text-sm font-medium">Original Prompt</h3>
-            <div className="p-3 bg-gray-50 rounded-md text-sm text-gray-700">
-              {originalPrompt}
+            <h3 className="text-sm font-medium">Conversation</h3>
+            <div className="space-y-3 max-h-[250px] overflow-y-auto p-2 border rounded-md">
+              {messages.map((message, index) => (
+                <div
+                  key={index}
+                  className={`p-3 rounded-lg text-sm ${
+                    message.role === 'user'
+                      ? 'bg-blue-50 ml-8'
+                      : message.role === 'system'
+                      ? 'bg-yellow-50'
+                      : 'bg-gray-50 mr-8'
+                  }`}
+                >
+                  <div className="font-medium mb-1 text-xs text-gray-500">
+                    {message.role === 'user'
+                      ? 'You'
+                      : message.role === 'system'
+                      ? 'System'
+                      : 'Assistant'}
+                  </div>
+                  <div className="whitespace-pre-wrap">{message.content}</div>
+                </div>
+              ))}
             </div>
           </div>
           
           <div className="space-y-2">
-            <h3 className="text-sm font-medium">Follow-up Prompt</h3>
+            <h3 className="text-sm font-medium">Your Message</h3>
             <textarea
-              className="w-full min-h-[120px] p-3 text-sm border rounded-md focus:outline-none focus:ring-2 focus:ring-[#368564]"
-              value={followUpPrompt}
-              onChange={(e) => setFollowUpPrompt(e.target.value)}
-              placeholder="Enter your follow-up prompt here..."
+              className="w-full min-h-[100px] p-3 text-sm border rounded-md focus:outline-none focus:ring-2 focus:ring-[#368564]"
+              value={newMessage}
+              onChange={(e) => setNewMessage(e.target.value)}
+              placeholder="Enter your message here..."
             />
           </div>
         </div>
@@ -70,7 +90,7 @@ export default function PromptIterationSheet({
           <Button
             className="w-full bg-[#368564] hover:bg-[#2c6b51] text-white"
             onClick={handleSubmit}
-            disabled={isLoading || !followUpPrompt.trim()}
+            disabled={isLoading || !newMessage.trim()}
           >
             {isLoading ? (
               <>
@@ -78,7 +98,7 @@ export default function PromptIterationSheet({
                 Generating...
               </>
             ) : (
-              "Generate New Version"
+              "Send Message"
             )}
           </Button>
         </SheetFooter>

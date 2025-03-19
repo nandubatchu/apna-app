@@ -12,7 +12,7 @@ import GeneratedAppModal from "@/components/organisms/GeneratedAppModal";
 import GenerateAppFab from "@/components/molecules/GenerateAppFab";
 import BottomNav from "@/components/organisms/BottomNav";
 import type { AppDetails } from '@/lib/hooks/useApps';
-import { GeneratedApp } from '@/lib/generatedAppsDB';
+import { GeneratedApp, ChatMessage } from '@/lib/generatedAppsDB';
 
 function HomeContent() {
   const { loading: profileLoading, error: profileError } = useProfile();
@@ -44,7 +44,7 @@ function HomeContent() {
   const [generatedApp, setGeneratedApp] = useState<{
     htmlContent: string;
     id: string;
-    prompt: string;
+    messages: ChatMessage[];
     name: string;
   } | null>(null);
 
@@ -72,11 +72,11 @@ function HomeContent() {
     setGeneratedApp(null);
   };
 
-  const handleGenerateApp = (htmlContent: string, appId: string, prompt: string, appName: string) => {
+  const handleGenerateApp = (htmlContent: string, appId: string, messages: ChatMessage[], appName: string) => {
     setGeneratedApp({
       htmlContent,
       id: appId,
-      prompt,
+      messages,
       name: appName
     });
   };
@@ -85,7 +85,7 @@ function HomeContent() {
     setGeneratedApp({
       htmlContent: app.htmlContent,
       id: app.id,
-      prompt: app.prompt,
+      messages: app.messages,
       name: app.name
     });
     
@@ -156,7 +156,7 @@ function HomeContent() {
         htmlContent={generatedApp?.htmlContent || ""}
         appId={generatedApp?.id || ""}
         appName={generatedApp?.name || ""}
-        prompt={generatedApp?.prompt || ""}
+        messages={generatedApp?.messages || []}
         onUpdate={handleGeneratedAppUpdate}
       />
       

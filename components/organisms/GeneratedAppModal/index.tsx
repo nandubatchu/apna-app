@@ -11,7 +11,7 @@ import {
 } from "@/lib/utils";
 import { FollowNpub, GetFeed, GetNote, GetNoteReactions, GetNoteReplies, GetNoteReposts, GetNpubProfile, GetNpubProfileMetadata, PublishNote, ReactToNote, ReplyToNote, RepostNote, SubscribeToFeed, SubscribeToNotifications, UnfollowNpub, UpdateProfile } from "@/lib/nostr";
 import { useGeneratedApps } from "@/lib/contexts/GeneratedAppsContext";
-import { GeneratedApp } from "@/lib/generatedAppsDB";
+import { GeneratedApp, ChatMessage } from "@/lib/generatedAppsDB";
 import PromptIterationSheet from "@/components/molecules/PromptIterationSheet";
 
 // Method handlers from the original mini-app page
@@ -187,17 +187,17 @@ interface GeneratedAppModalProps {
   htmlContent: string;
   appId: string;
   appName?: string;
-  prompt?: string;
+  messages?: ChatMessage[];
   onClose: () => void;
   onUpdate?: (app: GeneratedApp) => void;
 }
 
-export default function GeneratedAppModal({ 
-  isOpen, 
-  htmlContent, 
-  appId, 
-  appName, 
-  prompt = "",
+export default function GeneratedAppModal({
+  isOpen,
+  htmlContent,
+  appId,
+  appName,
+  messages = [],
   onClose,
   onUpdate
 }: GeneratedAppModalProps) {
@@ -252,20 +252,38 @@ export default function GeneratedAppModal({
     };
   }, [isOpen]);
 
-  const handleRegenerateContent = async (followUpPrompt: string) => {
-    if (!followUpPrompt.trim()) return;
+  const handleRegenerateContent = async (newMessage: string) => {
+    if (!newMessage.trim()) return;
     
     setIsRegenerating(true);
     try {
-      // Combine original prompt with follow-up
-      const combinedPrompt = `${prompt}\n\nFollow-up: ${followUpPrompt.trim()}`;
+      // Create a new user message
+      const userMessage: ChatMessage = {
+        role: 'user',
+        content: newMessage.trim()
+      };
+      
+      // Add the new message to the existing messages
+      // Preserve any system message at the beginning
+      let updatedMessages = [];
+      
+      // If the first message is a system message, keep it at the beginning
+      if (messages.length > 0 && messages[0].role === 'system') {
+        updatedMessages = [
+          messages[0],
+          ...messages.slice(1),
+          userMessage
+        ];
+      } else {
+        updatedMessages = [...messages, userMessage];
+      }
       
       const response = await fetch("/api/generate-html", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ prompt: combinedPrompt }),
+        body: JSON.stringify({ messages: updatedMessages }),
       });
 
       if (!response.ok) {
@@ -275,21 +293,30 @@ export default function GeneratedAppModal({
 
       const data = await response.json();
       
-      if (data.html) {
+      if (data.html && data.messages) {
+        // Get the latest HTML content
+        const htmlContent = data.html;
+        
+        // Get all previous HTML contents from the app
+        const app = await getApp(appId);
+        const htmlContents = app?.htmlContents || [];
+        
         // Create the updated app object
         const updatedApp: GeneratedApp = {
           id: appId,
           htmlContent: data.html,
-          prompt: combinedPrompt,
+          htmlContents: [...htmlContents, data.html],
+          messages: data.messages,
           name: appName || "Generated App",
-          createdAt: Date.now(),
+          createdAt: app?.createdAt || Date.now(),
           updatedAt: Date.now()
         };
         
         // Update the app in the database
         await updateApp(appId, {
           htmlContent: data.html,
-          prompt: combinedPrompt,
+          htmlContents: [...htmlContents, data.html],
+          messages: data.messages,
           name: appName || "Generated App"
         });
         
@@ -383,7 +410,7 @@ export default function GeneratedAppModal({
             <PromptIterationSheet
               isOpen={isIterationSheetOpen}
               onClose={() => setIsIterationSheetOpen(false)}
-              originalPrompt={prompt}
+              messages={messages}
               onSubmit={handleRegenerateContent}
               isLoading={isRegenerating}
             />

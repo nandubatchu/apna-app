@@ -11,9 +11,11 @@ import {
 import { Loader2, Plus } from "lucide-react";
 import { nanoid } from "nanoid";
 import { useGeneratedApps } from "@/lib/contexts/GeneratedAppsContext";
+import { createInitialMessages } from "@/lib/utils/htmlTemplates";
+import { ChatMessage } from "@/lib/generatedAppsDB";
 
 interface GenerateAppFabProps {
-  onGenerateApp: (htmlContent: string, appId: string, prompt: string, appName: string) => void;
+  onGenerateApp: (htmlContent: string, appId: string, messages: ChatMessage[], appName: string) => void;
 }
 
 export default function GenerateAppFab({ onGenerateApp }: GenerateAppFabProps) {
@@ -34,12 +36,15 @@ export default function GenerateAppFab({ onGenerateApp }: GenerateAppFabProps) {
     setError(null);
 
     try {
+      // Create initial messages from the prompt
+      const initialMessages = createInitialMessages(prompt.trim());
+      
       const response = await fetch("/api/generate-html", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ prompt: prompt.trim() }),
+        body: JSON.stringify({ messages: initialMessages }),
       });
 
       if (!response.ok) {
@@ -49,19 +54,19 @@ export default function GenerateAppFab({ onGenerateApp }: GenerateAppFabProps) {
 
       const data = await response.json();
       
-      if (data.html) {
-        // Create a new app in the database
+      if (data.html && data.messages) {
+        // Create a new app in the database with messages array
         const appId = await createApp(
           appName || "Generated App",
           data.html,
-          prompt.trim()
+          data.messages
         );
         
         // Explicitly refresh the apps list to ensure the UI updates
         await refreshApps();
         
-        // Notify parent component
-        onGenerateApp(data.html, appId, prompt.trim(), appName || "Generated App");
+        // Notify parent component with messages instead of prompt
+        onGenerateApp(data.html, appId, data.messages, appName || "Generated App");
         
         setIsOpen(false);
         setPrompt("");

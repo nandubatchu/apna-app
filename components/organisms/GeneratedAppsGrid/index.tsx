@@ -5,6 +5,7 @@ import { useState, useRef, useEffect } from "react";
 import { AppIcon } from "@/components/molecules/AppIcon";
 import { Button } from "@/components/ui/button";
 import { Trash2, MoreVertical } from "lucide-react";
+import { ChatMessage } from "@/lib/generatedAppsDB";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -23,7 +24,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 interface GeneratedAppsGridProps {
-  onAppSelect: (htmlContent: string, id: string, prompt: string, name: string) => void;
+  onAppSelect: (htmlContent: string, id: string, messages: ChatMessage[], name: string) => void;
 }
 
 export default function GeneratedAppsGrid({ onAppSelect }: GeneratedAppsGridProps) {
@@ -73,7 +74,7 @@ export default function GeneratedAppsGrid({ onAppSelect }: GeneratedAppsGridProp
   const handleAppSelect = (appURL: string, appId: string) => {
     const app = apps.find(a => a.id === appId);
     if (app) {
-      onAppSelect(app.htmlContent, app.id, app.prompt, app.name);
+      onAppSelect(app.htmlContent, app.id, app.messages, app.name);
     }
   };
 

@@ -1,10 +1,16 @@
 import { openDB } from 'idb';
 
+export interface ChatMessage {
+  role: 'system' | 'user' | 'assistant';
+  content: string;
+}
+
 export interface GeneratedApp {
   id: string;
   name: string;
   htmlContent: string;
-  prompt: string;
+  htmlContents: string[]; // Array of HTML contents for each iteration
+  messages: ChatMessage[]; // Array of messages instead of a single prompt
   createdAt: number;
   updatedAt: number;
   icon?: string;
@@ -13,7 +19,7 @@ export interface GeneratedApp {
 class GeneratedAppsDB {
   private static DB_NAME = 'apna-generated-apps';
   private static STORE_NAME = 'apps';
-  private static VERSION = 1;
+  private static VERSION = 2; // Increment version for schema change
 
   private async getDB(): Promise<IDBDatabase> {
     return new Promise((resolve, reject) => {
@@ -24,8 +30,43 @@ class GeneratedAppsDB {
 
       request.onupgradeneeded = (event) => {
         const db = (event.target as IDBOpenDBRequest).result;
-        if (!db.objectStoreNames.contains(GeneratedAppsDB.STORE_NAME)) {
-          db.createObjectStore(GeneratedAppsDB.STORE_NAME, { keyPath: 'id' });
+        const oldVersion = event.oldVersion;
+        
+        if (oldVersion < 1) {
+          // Create store if it doesn't exist (first installation)
+          if (!db.objectStoreNames.contains(GeneratedAppsDB.STORE_NAME)) {
+            db.createObjectStore(GeneratedAppsDB.STORE_NAME, { keyPath: 'id' });
+          }
+        }
+        
+        if (oldVersion < 2) {
+          // Migrate from version 1 to version 2
+          const transaction = (event.target as IDBOpenDBRequest).transaction;
+          if (transaction) {
+            const store = transaction.objectStore(GeneratedAppsDB.STORE_NAME);
+            
+            // Get all existing records to migrate them
+            store.openCursor().onsuccess = (cursorEvent) => {
+              const cursor = (cursorEvent.target as IDBRequest).result;
+              if (cursor) {
+                const app = cursor.value as any;
+                
+                // Convert old format to new format
+                if (app.prompt && !app.messages) {
+                  const updatedApp = {
+                    ...app,
+                    messages: [{ role: 'user', content: app.prompt }],
+                    htmlContents: [app.htmlContent],
+                  };
+                  
+                  // Update the record with the new format
+                  cursor.update(updatedApp);
+                }
+                
+                cursor.continue();
+              }
+            };
+          }
         }
       };
     });

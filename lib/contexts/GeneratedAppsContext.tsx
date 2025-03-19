@@ -2,13 +2,14 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { nanoid } from 'nanoid';
-import { generatedAppsDB, GeneratedApp } from '@/lib/generatedAppsDB';
+import { generatedAppsDB, GeneratedApp, ChatMessage } from '@/lib/generatedAppsDB';
+import { createInitialMessages, BASE_HTML_TEMPLATE } from '@/lib/utils/htmlTemplates';
 
 interface GeneratedAppsContextType {
   apps: GeneratedApp[];
   loading: boolean;
   error: string | null;
-  createApp: (name: string, htmlContent: string, prompt: string) => Promise<string>;
+  createApp: (name: string, htmlContent: string, messages: ChatMessage[]) => Promise<string>;
   updateApp: (id: string, updates: Partial<Omit<GeneratedApp, 'id' | 'createdAt'>>) => Promise<void>;
   deleteApp: (id: string) => Promise<void>;
   getApp: (id: string) => Promise<GeneratedApp | undefined>;
@@ -38,13 +39,14 @@ export function GeneratedAppsProvider({ children }: { children: React.ReactNode 
   }, []);
 
   // Create a new app
-  const createApp = useCallback(async (name: string, htmlContent: string, prompt: string) => {
+  const createApp = useCallback(async (name: string, htmlContent: string, messages: ChatMessage[]) => {
     try {
       const newApp: GeneratedApp = {
         id: `generated-${nanoid(8)}`,
         name,
         htmlContent,
-        prompt,
+        htmlContents: [htmlContent], // Initialize with the first HTML content
+        messages, // Store the messages array
         createdAt: Date.now(),
         updatedAt: Date.now(),
       };
