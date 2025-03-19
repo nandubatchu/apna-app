@@ -15,6 +15,7 @@ import { createInitialMessages } from "@/lib/utils/htmlTemplates";
 import { ChatMessage } from "@/lib/generatedAppsDB";
 import { useOpenRouteApiKey } from "@/lib/hooks/useOpenRouteApiKey";
 import { useRouter } from "next/navigation";
+import { callOpenRouterApi } from "@/lib/utils/openRouterApi";
 
 interface GenerateAppFabProps {
   onGenerateApp: (htmlContent: string, appId: string, messages: ChatMessage[], appName: string) => void;
@@ -45,26 +46,11 @@ export default function GenerateAppFab({ onGenerateApp }: GenerateAppFabProps) {
     setError(null);
 
     try {
-      // Create initial messages from the prompt
-      const initialMessages = createInitialMessages(prompt.trim());
-      
-      const response = await fetch("/api/generate-html", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          messages: initialMessages,
-          apiKey: apiKey // Include the API key in the request
-        }),
+      // Call the OpenRouter API directly using the client-side utility
+      const data = await callOpenRouterApi({
+        prompt: prompt.trim(),
+        apiKey: apiKey
       });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to generate HTML");
-      }
-
-      const data = await response.json();
       
       if (data.html && data.messages) {
         // Create a new app in the database with messages array

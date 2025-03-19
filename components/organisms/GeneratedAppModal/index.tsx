@@ -13,6 +13,8 @@ import { FollowNpub, GetFeed, GetNote, GetNoteReactions, GetNoteReplies, GetNote
 import { useGeneratedApps } from "@/lib/contexts/GeneratedAppsContext";
 import { GeneratedApp, ChatMessage } from "@/lib/generatedAppsDB";
 import PromptIterationSheet from "@/components/molecules/PromptIterationSheet";
+import { callOpenRouterApi } from "@/lib/utils/openRouterApi";
+import { useOpenRouteApiKey } from "@/lib/hooks/useOpenRouteApiKey";
 
 // Method handlers from the original mini-app page
 const methodHandlers: IHostMethodHandlers = {
@@ -206,6 +208,7 @@ export default function GeneratedAppModal({
   const [isIterationSheetOpen, setIsIterationSheetOpen] = useState(false);
   const [isRegenerating, setIsRegenerating] = useState(false);
   const { getApp, updateApp, refreshApps } = useGeneratedApps();
+  const { apiKey } = useOpenRouteApiKey();
 
   // We don't need to load app data anymore since we're not editing the prompt directly
 
@@ -278,20 +281,15 @@ export default function GeneratedAppModal({
         updatedMessages = [...messages, userMessage];
       }
       
-      const response = await fetch("/api/generate-html", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ messages: updatedMessages }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to regenerate HTML");
+      if (!apiKey) {
+        throw new Error("OpenRouter API key is not provided. Please add your API key in the settings.");
       }
 
-      const data = await response.json();
+      // Call the OpenRouter API directly using the client-side utility
+      const data = await callOpenRouterApi({
+        messages: updatedMessages,
+        apiKey
+      });
       
       if (data.html && data.messages) {
         // Get the latest HTML content
