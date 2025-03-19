@@ -1,11 +1,6 @@
 "use server";
 
 import { NextRequest, NextResponse } from "next/server";
-
-export const config = {
-  runtime: "nodejs",
-  maxDuration: 120, // 2 minutes in seconds
-};
 import { ChatMessage } from "@/lib/generatedAppsDB";
 import { createInitialMessages } from "@/lib/utils/htmlTemplates";
 
