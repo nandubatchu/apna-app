@@ -5,11 +5,12 @@ import { ChatMessage } from "@/lib/generatedAppsDB";
 import { createInitialMessages } from "@/lib/utils/htmlTemplates";
 
 const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
-const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
+// Fallback to environment variable if provided
+const FALLBACK_API_KEY = process.env.OPENROUTER_API_KEY;
 
 export async function POST(request: NextRequest) {
   try {
-    const { prompt, messages } = await request.json();
+    const { prompt, messages, apiKey } = await request.json();
 
     // Check if either prompt or messages is provided
     if (!prompt && (!messages || messages.length === 0)) {
@@ -19,10 +20,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!OPENROUTER_API_KEY) {
+    // Use the API key from the request or fall back to the environment variable
+    const openRouterApiKey = apiKey || FALLBACK_API_KEY;
+
+    if (!openRouterApiKey) {
       return NextResponse.json(
-        { error: "OpenRouter API key is not configured" },
-        { status: 500 }
+        { error: "OpenRouter API key is not provided. Please add your API key in the settings." },
+        { status: 400 }
       );
     }
 
@@ -33,12 +37,12 @@ export async function POST(request: NextRequest) {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${OPENROUTER_API_KEY}`,
+        Authorization: `Bearer ${openRouterApiKey}`,
         "HTTP-Referer": "https://apna.app",
         "X-Title": "Apna App Generator",
       },
       body: JSON.stringify({
-        model: "anthropic/claude-3-sonnet-20240229",
+        model: "anthropic/claude-3.7-sonnet",
         messages: chatMessages,
         max_tokens: 4000,
       }),

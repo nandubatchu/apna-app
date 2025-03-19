@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -8,11 +8,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Loader2, Plus } from "lucide-react";
+import { Loader2, Plus, AlertTriangle } from "lucide-react";
 import { nanoid } from "nanoid";
 import { useGeneratedApps } from "@/lib/contexts/GeneratedAppsContext";
 import { createInitialMessages } from "@/lib/utils/htmlTemplates";
 import { ChatMessage } from "@/lib/generatedAppsDB";
+import { useOpenRouteApiKey } from "@/lib/hooks/useOpenRouteApiKey";
+import { useRouter } from "next/navigation";
 
 interface GenerateAppFabProps {
   onGenerateApp: (htmlContent: string, appId: string, messages: ChatMessage[], appName: string) => void;
@@ -25,10 +27,17 @@ export default function GenerateAppFab({ onGenerateApp }: GenerateAppFabProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { createApp, refreshApps } = useGeneratedApps();
+  const { apiKey, isLoaded } = useOpenRouteApiKey();
+  const router = useRouter();
 
   const handleSubmit = async () => {
     if (!prompt.trim()) {
       setError("Please enter a prompt");
+      return;
+    }
+
+    if (!apiKey) {
+      setError("OpenRoute API key is required. Please add it in the settings.");
       return;
     }
 
@@ -44,7 +53,10 @@ export default function GenerateAppFab({ onGenerateApp }: GenerateAppFabProps) {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ messages: initialMessages }),
+        body: JSON.stringify({
+          messages: initialMessages,
+          apiKey: apiKey // Include the API key in the request
+        }),
       });
 
       if (!response.ok) {
@@ -81,15 +93,22 @@ export default function GenerateAppFab({ onGenerateApp }: GenerateAppFabProps) {
     }
   };
 
+  const handleOpenSettings = () => {
+    router.push('/settings');
+    setIsOpen(false);
+  };
+
   return (
     <>
-      <Button
-        onClick={() => setIsOpen(true)}
-        className="fixed bottom-20 right-4 rounded-full w-14 h-14 shadow-lg bg-[#368564] hover:bg-[#2c6b51] z-50"
-        size="icon"
-      >
-        <Plus className="h-6 w-6 text-white" />
-      </Button>
+      {isLoaded && apiKey && (
+        <Button
+          onClick={() => setIsOpen(true)}
+          className="fixed bottom-20 right-4 rounded-full w-14 h-14 shadow-lg bg-[#368564] hover:bg-[#2c6b51] z-50"
+          size="icon"
+        >
+          <Plus className="h-6 w-6 text-white" />
+        </Button>
+      )}
 
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
         <DialogContent className="sm:max-w-md">
@@ -97,6 +116,26 @@ export default function GenerateAppFab({ onGenerateApp }: GenerateAppFabProps) {
             <DialogTitle>Generate HTML App</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
+            {!apiKey && (
+              <div className="p-4 bg-amber-50 border border-amber-200 rounded-md">
+                <div className="flex items-start gap-3">
+                  <AlertTriangle className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-medium text-amber-800">API Key Required</p>
+                    <p className="text-sm text-amber-700 mt-1">
+                      You need to add your OpenRoute API key in settings to generate apps.
+                    </p>
+                    <Button
+                      onClick={handleOpenSettings}
+                      variant="outline"
+                      className="mt-2 text-amber-700 border-amber-300 hover:bg-amber-100"
+                    >
+                      Go to Settings
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
             <div className="space-y-2">
               <p className="text-sm text-gray-500">App Name:</p>
               <input
@@ -105,7 +144,7 @@ export default function GenerateAppFab({ onGenerateApp }: GenerateAppFabProps) {
                 placeholder="Generated App"
                 value={appName}
                 onChange={(e) => setAppName(e.target.value)}
-                disabled={isLoading}
+                disabled={isLoading || !apiKey}
               />
             </div>
             <div className="space-y-2">
@@ -117,7 +156,7 @@ export default function GenerateAppFab({ onGenerateApp }: GenerateAppFabProps) {
                 placeholder="e.g., call nostr.getActiveUserProfile and display the profile result"
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
-                disabled={isLoading}
+                disabled={isLoading || !apiKey}
               />
               {error && <p className="text-sm text-red-500">{error}</p>}
             </div>
@@ -135,7 +174,7 @@ export default function GenerateAppFab({ onGenerateApp }: GenerateAppFabProps) {
               type="button"
               onClick={handleSubmit}
               className="bg-[#368564] hover:bg-[#2c6b51] text-white"
-              disabled={isLoading}
+              disabled={isLoading || !apiKey}
             >
               {isLoading ? (
                 <>

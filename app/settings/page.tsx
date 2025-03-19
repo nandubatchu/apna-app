@@ -4,6 +4,7 @@ import { useState } from "react"
 import ImportNsec from "../../components/organisms/ImportNsec"
 import { PWAReinstallButton } from "@/components/PWAReinstallButton"
 import { AlertTriangle } from "lucide-react"
+import OpenRouteApiKeySettings from "@/components/molecules/OpenRouteApiKeySettings"
 
 export default function SettingsPage() {
   return (
@@ -27,6 +28,11 @@ export default function SettingsPage() {
               <ImportNsec />
             </div>
           </div>
+        </section>
+
+        <section className="border rounded-lg p-4">
+          <h2 className="text-lg font-semibold mb-4">API Settings</h2>
+          <OpenRouteApiKeySettings />
         </section>
 
         <section className="border rounded-lg p-4">
