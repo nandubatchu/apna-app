@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { nanoid } from 'nanoid';
-import { generatedAppsDB, GeneratedApp } from '@/lib/generatedAppsDB';
+import { generatedAppsDB, GeneratedApp, ChatMessage } from '@/lib/generatedAppsDB';
 
 export function useGeneratedApps() {
   const [apps, setApps] = useState<GeneratedApp[]>([]);
@@ -23,13 +23,14 @@ export function useGeneratedApps() {
   }, []);
 
   // Create a new app
-  const createApp = useCallback(async (name: string, htmlContent: string, prompt: string) => {
+  const createApp = useCallback(async (name: string, htmlContent: string, messages: ChatMessage[]) => {
     try {
       const newApp: GeneratedApp = {
         id: `generated-${nanoid(8)}`,
         name,
         htmlContent,
-        prompt,
+        htmlContents: [htmlContent],
+        messages,
         createdAt: Date.now(),
         updatedAt: Date.now(),
       };
