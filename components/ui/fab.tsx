@@ -7,7 +7,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Expand, Star, X, Edit, User } from "lucide-react"
+import { Expand, Star, X, Edit, User, Repeat } from "lucide-react"
 import Image from "next/image"
 import { motion, useMotionValue, useTransform, useSpring } from "framer-motion"
 import { useEffect, useRef, useState, ChangeEvent } from "react"
@@ -32,9 +32,20 @@ interface FabProps {
   appId?: string;
   onRate?: () => void;
   onClose?: () => void;
+  onIterate?: () => void;
+  isGeneratedApp?: boolean;
 }
 
-export function Fab({ onToggleHighlight, onToggleFullscreen, isFullscreen, appId, onRate, onClose }: FabProps) {
+export function Fab({
+  onToggleHighlight,
+  onToggleFullscreen,
+  isFullscreen,
+  appId,
+  onRate,
+  onClose,
+  onIterate,
+  isGeneratedApp = false
+}: FabProps) {
   const fabRef = useRef<HTMLDivElement>(null)
   const x = useMotionValue(0)
   const y = useMotionValue(0)
@@ -212,6 +223,12 @@ export function Fab({ onToggleHighlight, onToggleFullscreen, isFullscreen, appId
                 </Button>
               </DialogContent>
             </Dialog>
+          )}
+          {isGeneratedApp && onIterate && (
+            <DropdownMenuItem onClick={onIterate}>
+              <Repeat className="mr-2 h-4 w-4" />
+              Iterate
+            </DropdownMenuItem>
           )}
           <DropdownMenuItem onClick={onToggleHighlight}>
             <Edit className="mr-2 h-4 w-4" />

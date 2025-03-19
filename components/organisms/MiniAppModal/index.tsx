@@ -199,6 +199,8 @@ export default function MiniAppModal({ isOpen, appUrl, appId, appName, onClose }
   const [isFullscreen, setIsFullscreen] = useState(true);
 
   useEffect(() => {
+    let apnaInstance: ApnaHost | undefined;
+    
     if (typeof window !== "undefined" && isOpen) {
       const init = async () => {
         const { ApnaHost } = (await import('@apna/sdk'))
@@ -210,14 +212,66 @@ export default function MiniAppModal({ isOpen, appUrl, appId, appName, onClose }
         })
         // @ts-ignore
         window.apna = apna
+        apnaInstance = apna;
         setApnaHost(apna)
       }
       init()
     }
+    
+    // Cleanup function
+    return () => {
+      if (!isOpen && typeof window !== "undefined") {
+        // Clean up global objects
+        // @ts-ignore
+        if (window.methodHandlers) delete window.methodHandlers;
+        // @ts-ignore
+        if (window.apna) delete window.apna;
+        
+        // Clean up ApnaHost instance
+        if (apnaInstance) {
+          // @ts-ignore
+          if (apnaInstance.cleanup) apnaInstance.cleanup();
+          setApnaHost(undefined);
+        }
+        
+        // Force cleanup of any event listeners on the body
+        document.body.style.pointerEvents = '';
+        document.body.style.overflow = '';
+      }
+    };
   }, [isOpen]);
 
-  return isOpen ? (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+  return (
+    <Dialog open={isOpen} onOpenChange={(open) => {
+      if (!open) {
+        // Clean up any resources before closing
+        if (typeof window !== "undefined") {
+          // @ts-ignore
+          delete window.methodHandlers;
+          // @ts-ignore
+          delete window.apna;
+          
+          // Force cleanup of any event listeners
+          document.body.style.pointerEvents = '';
+          document.body.style.overflow = '';
+          
+          // Remove any aria-hidden attributes
+          document.querySelectorAll('[aria-hidden="true"]').forEach((el) => {
+            if (el instanceof HTMLElement) {
+              el.removeAttribute('aria-hidden');
+            }
+          });
+          
+          // Force a reflow to ensure all styles are applied
+          document.body.offsetHeight;
+        }
+        
+        // Small delay to ensure cleanup is complete
+        setTimeout(() => {
+          onClose();
+        }, 0);
+      }
+    }}>
       <DialogContent variant="fullscreen" className="p-0 overflow-hidden">
         <div className="flex flex-col h-full">
           {!isFullscreen && (
@@ -229,7 +283,7 @@ export default function MiniAppModal({ isOpen, appUrl, appId, appName, onClose }
             />
           )}
           <div className="flex-1">
-            {appUrl && (
+            {appUrl && isOpen && (
               <iframe
                 id="miniAppIframe"
                 src={appUrl}
@@ -264,5 +318,5 @@ export default function MiniAppModal({ isOpen, appUrl, appId, appName, onClose }
         </div>
       </DialogContent>
     </Dialog>
-  ) : null;
+  );
 }
