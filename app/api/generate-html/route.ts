@@ -4,6 +4,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { ChatMessage } from "@/lib/generatedAppsDB";
 import { createInitialMessages } from "@/lib/utils/htmlTemplates";
 
+export const maxDuration = 60; // Up to 60 seconds on Hobby plan
+
 const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
 // Fallback to environment variable if provided
 const FALLBACK_API_KEY = process.env.OPENROUTER_API_KEY;
