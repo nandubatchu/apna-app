@@ -2,6 +2,9 @@ import { ChatMessage } from "@/lib/generatedAppsDB";
 import { createInitialMessages } from "./htmlTemplates";
 
 const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
+const API_KEY_STORAGE_KEY = "openroute-api-key";
+const MODEL_STORAGE_KEY = "openroute-model";
+const DEFAULT_MODEL = "anthropic/claude-3.7-sonnet";
 
 /**
  * Interface for the OpenRouter API request parameters
@@ -9,7 +12,8 @@ const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
 export interface OpenRouterRequestParams {
   prompt?: string;
   messages?: ChatMessage[];
-  apiKey: string;
+  apiKey?: string;
+  model?: string;
 }
 
 /**
@@ -47,21 +51,52 @@ function extractHtmlFromResponse(content: string): string {
 }
 
 /**
+ * Gets the API key from localStorage
+ */
+function getApiKeyFromStorage(): string {
+  try {
+    return localStorage.getItem(API_KEY_STORAGE_KEY) || "";
+  } catch (error) {
+    console.error("Error accessing localStorage for API key:", error);
+    return "";
+  }
+}
+
+/**
+ * Gets the model from localStorage
+ */
+function getModelFromStorage(): string {
+  try {
+    return localStorage.getItem(MODEL_STORAGE_KEY) || "";
+  } catch (error) {
+    console.error("Error accessing localStorage for model:", error);
+    return "";
+  }
+}
+
+/**
  * Client-side utility to call the OpenRouter API directly
  */
 export async function callOpenRouterApi({
   prompt,
   messages,
-  apiKey,
+  apiKey: providedApiKey,
+  model: providedModel,
 }: OpenRouterRequestParams): Promise<OpenRouterResponse> {
   // Check if either prompt or messages is provided
   if (!prompt && (!messages || messages.length === 0)) {
     throw new Error("Either prompt or messages is required");
   }
 
+  // Get API key from params or localStorage
+  const apiKey = providedApiKey || getApiKeyFromStorage();
   if (!apiKey) {
     throw new Error("OpenRouter API key is not provided. Please add your API key in the settings.");
   }
+
+  // Get model from params, localStorage, or use default
+  const userModel = providedModel || getModelFromStorage();
+  const modelToUse = userModel || DEFAULT_MODEL;
 
   // Use provided messages or create initial messages from prompt
   const chatMessages = messages || createInitialMessages(prompt!);
@@ -76,9 +111,9 @@ export async function callOpenRouterApi({
         "X-Title": "Apna App Generator",
       },
       body: JSON.stringify({
-        model: "anthropic/claude-3.7-sonnet",
+        model: modelToUse,
         messages: chatMessages,
-        max_tokens: 4000,
+        // max_tokens: 4000,
       }),
     });
 

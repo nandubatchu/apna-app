@@ -11,9 +11,9 @@ export default {
 
 /**
  * Default story for OpenRouteApiKeySettings
- * 
+ *
  * Note: This component relies on the useOpenRouteApiKey hook which accesses localStorage.
- * In a real environment, it will display and manage the actual API key stored in localStorage.
+ * In a real environment, it will display and manage the actual API key and model stored in localStorage.
  */
 export const Default = () => (
   <div className="w-[600px] p-4 border rounded-lg">
@@ -25,11 +25,12 @@ export const Default = () => (
 Default.parameters = {
   docs: {
     description: {
-      story: "The OpenRouteApiKeySettings component provides a user interface for managing the OpenRoute API key.\n\n" +
+      story: "The OpenRouteApiKeySettings component provides a user interface for managing the OpenRoute API key and model settings.\n\n" +
         "**Key Features:**\n" +
         "- Displays the current API key from localStorage (masked as password)\n" +
-        "- Allows users to save a new API key\n" +
-        "- Provides a clear button to remove the API key\n" +
+        "- Allows users to specify a custom model identifier (optional)\n" +
+        "- Allows users to save API key and model settings\n" +
+        "- Provides a clear button to remove the settings\n" +
         "- Shows success/error feedback when saving\n" +
         "- Includes helpful information about where to get an API key\n\n" +
         "**Usage:**\n" +
