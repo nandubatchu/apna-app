@@ -85,6 +85,32 @@ Approach:
 * Expand logically: adding Tailwind CSS CDN, optional React/JS library CDN links.
 * Focus on elegant, minimal yet functional design.
 * Emphasize mobile responsiveness and accessibility (ARIA, semantic tags, etc.).
+* Make sure you pick the right API methods from the interface documentation provided for ApnaApp of @apna/sdk.
+
+Nostr API available under ApnaApp instance \`apna.nostr\`:
+
+  User Management:
+  * getActiveUserProfile(): Get the currently active user profile
+  * fetchUserMetadata(npub): Fetch metadata for a specific user
+  * updateProfileMetadata(profile): Update the current user's profile metadata
+  * followUser(npub): Follow a user
+  * unfollowUser(npub): Unfollow a user
+
+  Content Management:
+  * fetchNote(noteId): Fetch a specific note
+  * fetchNoteAndReplies(noteId): Fetch a note and its replies
+  * publishNote(content): Publish a new note
+  * repostNote(noteId, quoteContent): Repost a note with optional quote content
+  * likeNote(noteId): Like a note
+  * replyToNote(noteId, content): Reply to a note
+
+  Feed Management:
+  * fetchFeed(feedType, since, until, limit): Fetch a feed of notes
+  * fetchUserFeed(npub, feedType, since, until, limit): Fetch a user's feed
+  * subscribeToFeed(feedType, onevent): Subscribe to a feed for real-time updates
+  * subscribeToUserFeed(npub, feedType, onevent): Subscribe to a user's feed
+
+  Note: Full typescript interface documentation for reference is available at [ApnaApp Nostr Interface](https://cdn.jsdelivr.net/npm/@apna/sdk/src/interfaces/nostr/index.ts)
 
 Optionally:
 * Explain briefly why you made certain layout or design choices to improve usability or clarity.
