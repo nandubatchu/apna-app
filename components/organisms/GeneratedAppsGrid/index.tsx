@@ -4,7 +4,7 @@ import { useGeneratedApps } from "@/lib/contexts/GeneratedAppsContext";
 import { useState, useRef, useEffect } from "react";
 import { AppIcon } from "@/components/molecules/AppIcon";
 import { Button } from "@/components/ui/button";
-import { Trash2, MoreVertical } from "lucide-react";
+import { Trash2, MoreVertical, Globe } from "lucide-react";
 import { ChatMessage } from "@/lib/generatedAppsDB";
 import {
   AlertDialog,
@@ -71,7 +71,7 @@ export default function GeneratedAppsGrid({ onAppSelect }: GeneratedAppsGridProp
     }
   };
 
-  const handleAppSelect = (appURL: string, appId: string) => {
+  const handleAppSelect = (appURL: string | null, appId: string) => {
     const app = apps.find(a => a.id === appId);
     if (app) {
       onAppSelect(app.htmlContent, app.id, app.messages, app.name);
@@ -120,12 +120,22 @@ export default function GeneratedAppsGrid({ onAppSelect }: GeneratedAppsGridProp
             onTouchEnd={handleTouchEnd}
             onTouchCancel={handleTouchEnd}
           >
-            <AppIcon
-              appId={app.id}
-              appName={app.name}
-              appURL={`data:text/html,${encodeURIComponent(app.htmlContent)}`}
-              onSelect={handleAppSelect}
-            />
+            <div className="relative">
+              <AppIcon
+                appId={app.id}
+                appName={app.name}
+                appURL={`data:text/html,${encodeURIComponent(app.htmlContent)}`}
+                isGeneratedApp={true}
+                onSelect={handleAppSelect}
+              />
+              
+              {/* Published indicator */}
+              {app.published && app.published.some(item => !!item) && (
+                <div className="absolute -top-1 -right-1 bg-[#368564] text-white rounded-full p-1 shadow-md" title="Published">
+                  <Globe className="h-3 w-3" />
+                </div>
+              )}
+            </div>
             
             {/* Context menu for right-click */}
             {contextMenuApp === app.id && (
@@ -138,6 +148,22 @@ export default function GeneratedAppsGrid({ onAppSelect }: GeneratedAppsGridProp
                   </div>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent>
+                  {/* Publish option - only show if not published */}
+                  {(!app.published || app.published.every(item => !item)) && (
+                    <DropdownMenuItem
+                      className="text-[#368564] focus:text-[#368564]"
+                      onClick={() => {
+                        setContextMenuApp(null);
+                        // Redirect to submit app page with this app pre-selected
+                        window.location.href = `/explore?publish=${app.id}`;
+                      }}
+                    >
+                      <Globe className="h-4 w-4 mr-2" />
+                      Publish
+                    </DropdownMenuItem>
+                  )}
+                  
+                  {/* Delete option */}
                   <DropdownMenuItem
                     className="text-red-500 focus:text-red-500"
                     onClick={() => {

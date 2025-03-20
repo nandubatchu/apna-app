@@ -7,8 +7,10 @@ import { AppDetails, APP_CATEGORIES, ProcessedAppEvent, AppCategory } from '@/li
 import { APPS_ROOT_NOTE_ID } from '@/lib/constants';
 
 interface AppDetailsJSON {
-    appURL: string;
+    appURL?: string;
     appName: string;
+    htmlContent?: string;
+    isGeneratedApp?: boolean;
     categories: AppCategory[];
     mode: "Full-page";
     description: string;
@@ -17,10 +19,12 @@ interface AppDetailsJSON {
 async function parseAppDetailsFromJSON(text: string): Promise<AppDetailsJSON | null> {
     try {
         const json = JSON.parse(text);
-        if (json && typeof json === 'object' && 'appURL' in json) {
+        if (json && typeof json === 'object' && (('appURL' in json) || ('htmlContent' in json && json.isGeneratedApp === true))) {
             return {
                 appURL: json.appURL,
                 appName: json.appName,
+                htmlContent: json.htmlContent,
+                isGeneratedApp: json.isGeneratedApp,
                 categories: Array.isArray(json.categories)
                     ? json.categories.filter((cat: string) => APP_CATEGORIES.includes(cat as AppCategory))
                     : ["Miscellaneous"],
@@ -83,8 +87,13 @@ export async function fetchAppListAction(revalidate = false): Promise<AppDetails
             // Filter valid events
             const validEvents = processedEvents.filter((event): event is ProcessedAppEvent =>
                 event !== null &&
-                typeof event.appURL === 'string' &&
-                typeof event.appName === 'string'
+                typeof event.appName === 'string' &&
+                (
+                    // External app validation
+                    (typeof event.appURL === 'string' && event.appURL !== '') ||
+                    // Generated app validation
+                    (event.isGeneratedApp === true && typeof event.htmlContent === 'string' && event.htmlContent !== '')
+                )
             );
 
             // For each valid event, check for update replies from the same author
@@ -99,8 +108,16 @@ export async function fetchAppListAction(revalidate = false): Promise<AppDetails
                             const updateDetails = await parseAppDetailsFromJSON(reply.content);
                             if (!updateDetails) return null;
                             
-                            // Validate required fields
-                            if (!updateDetails.appURL || !updateDetails.appName) return null;
+                            // Validate required fields based on app type
+                            if (
+                                !updateDetails.appName ||
+                                (
+                                    // External app validation
+                                    !updateDetails.isGeneratedApp && (!updateDetails.appURL || updateDetails.appURL === '') ||
+                                    // Generated app validation
+                                    updateDetails.isGeneratedApp && (!updateDetails.htmlContent || updateDetails.htmlContent === '')
+                                )
+                            ) return null;
                             
                             return {
                                 reply,
@@ -141,16 +158,30 @@ export async function fetchAppListAction(revalidate = false): Promise<AppDetails
             // Process apps and their reactions
             for (const event of updatedValidEvents) {
                 // Get reactions for the original app submission
-                const originalEvent = validEvents.find(ve =>
-                    ve.pubkey === event.pubkey &&
-                    ve.appURL === event.appURL
-                );
+                const originalEvent = validEvents.find(ve => {
+                    if (ve.pubkey !== event.pubkey) return false;
+                    
+                    // // For external apps, match by appURL
+                    // if (!event.isGeneratedApp && !ve.isGeneratedApp) {
+                    //     return ve.appURL === event.appURL;
+                    // }
+                    
+                    // // For generated apps, match by appName (assuming appName is unique per user)
+                    // if (event.isGeneratedApp && ve.isGeneratedApp) {
+                    //     return ve.appName === event.appName;
+                    // }
+                    
+                    return false;
+                });
+                
                 const reactions = await GetNoteReactions(originalEvent?.id || event.id, revalidate, undefined);
                 const avgRating = await calculateAverageRating(reactions);
                 
                 appList.push({
                     appURL: event.appURL,
                     appName: event.appName,
+                    htmlContent: event.htmlContent,
+                    isGeneratedApp: event.isGeneratedApp,
                     id: originalEvent?.id || event.id, // Keep original note ID for reactions
                     pubkey: event.pubkey,
                     reactions,

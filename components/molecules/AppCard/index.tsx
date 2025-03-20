@@ -8,12 +8,12 @@ import type { AppDetails } from '@/lib/hooks/useApps';
 interface AppCardProps {
   app: AppDetails;
   selected: boolean;
-  onSelect: (appURL: string, appId: string) => void;
+  onSelect: (appURL: string | null, appId: string, isGeneratedApp?: boolean) => void;
   showEditButton?: boolean;
 }
 
 export function AppCard({ app, selected, onSelect, showEditButton }: AppCardProps) {
-  const faviconUrl = getFaviconUrl(app.appURL);
+  const faviconUrl = app.appURL ? getFaviconUrl(app.appURL) : null;
 
   return (
     <div className="w-full group relative">
@@ -74,7 +74,7 @@ export function AppCard({ app, selected, onSelect, showEditButton }: AppCardProp
                 <RatingDisplay app={app} />
                 {showEditButton ? (
                   <Button
-                    onClick={() => onSelect(app.appURL, app.id)}
+                    onClick={() => onSelect(app.appURL || null, app.id, app.isGeneratedApp)}
                     className="bg-[#368564] hover:bg-[#2a684d] text-white px-4 py-2 rounded-lg transition-all duration-300 flex items-center gap-2"
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -84,7 +84,7 @@ export function AppCard({ app, selected, onSelect, showEditButton }: AppCardProp
                   </Button>
                 ) : (
                   <Button
-                    onClick={() => onSelect(app.appURL, app.id)}
+                    onClick={() => onSelect(app.appURL || null, app.id, app.isGeneratedApp)}
                     className="bg-[#368564] hover:bg-[#2a684d] text-white px-4 py-2 rounded-lg transition-all duration-300"
                   >
                     Launch App

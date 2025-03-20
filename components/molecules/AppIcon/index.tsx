@@ -3,13 +3,14 @@ import { getFaviconUrl } from '@/lib/utils';
 
 interface AppIconProps {
   appName: string;
-  appURL: string;
+  appURL?: string;
   appId: string;
-  onSelect?: (appURL: string, appId: string) => void;
+  isGeneratedApp?: boolean;
+  onSelect?: (appURL: string | null, appId: string, isGeneratedApp?: boolean) => void;
 }
 
-export function AppIcon({ appName, appURL, appId, onSelect }: AppIconProps) {
-  const faviconUrl = getFaviconUrl(appURL);
+export function AppIcon({ appName, appURL = '', appId, isGeneratedApp = false, onSelect }: AppIconProps) {
+  const faviconUrl = appURL ? getFaviconUrl(appURL) : null;
   
   // Trim text to roughly fit two lines (about 24 characters)
   const trimText = (text: string) => {
@@ -35,7 +36,7 @@ export function AppIcon({ appName, appURL, appId, onSelect }: AppIconProps) {
 
   return (
     <button
-      onClick={() => onSelect?.(appURL, appId)}
+      onClick={() => onSelect?.(appURL, appId, isGeneratedApp)}
       className="flex flex-col items-center gap-1 w-16"
     >
       <div className="w-10 h-10 flex items-center justify-center">

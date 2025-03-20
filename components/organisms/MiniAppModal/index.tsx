@@ -188,13 +188,23 @@ const methodHandlers: IHostMethodHandlers = {
 
 interface MiniAppModalProps {
   isOpen: boolean;
-  appUrl: string | null;
+  appUrl?: string | null;
+  htmlContent?: string | null;
   appId: string;
   appName?: string;
+  isGeneratedApp?: boolean;
   onClose: () => void;
 }
 
-export default function MiniAppModal({ isOpen, appUrl, appId, appName, onClose }: MiniAppModalProps) {
+export default function MiniAppModal({
+  isOpen,
+  appUrl,
+  htmlContent,
+  appId,
+  appName,
+  isGeneratedApp = false,
+  onClose
+}: MiniAppModalProps) {
   const [apnaHost, setApnaHost] = useState<ApnaHost>();
   const [isFullscreen, setIsFullscreen] = useState(true);
 
@@ -283,10 +293,11 @@ export default function MiniAppModal({ isOpen, appUrl, appId, appName, onClose }
             />
           )}
           <div className="flex-1">
-            {appUrl && isOpen && (
+            {isOpen && (
               <iframe
                 id="miniAppIframe"
-                src={appUrl}
+                src={!isGeneratedApp && appUrl ? appUrl : undefined}
+                srcDoc={isGeneratedApp && htmlContent ? htmlContent : undefined}
                 style={{
                   overflow: "hidden",
                   height: "100%",
@@ -298,6 +309,7 @@ export default function MiniAppModal({ isOpen, appUrl, appId, appName, onClose }
                 allow="camera"
               />
             )}
+            
             <Fab
               isFullscreen={isFullscreen}
               onToggleFullscreen={() => setIsFullscreen(!isFullscreen)}
@@ -306,7 +318,10 @@ export default function MiniAppModal({ isOpen, appUrl, appId, appName, onClose }
                 // Refresh the app to show updated rating
                 const iframe = document.getElementById('miniAppIframe') as HTMLIFrameElement;
                 if (iframe) {
-                  iframe.src = iframe.src;
+                  if (!isGeneratedApp && iframe.src) {
+                    iframe.src = iframe.src;
+                  }
+                  // For generated apps, we don't need to refresh
                 }
               }}
               onToggleHighlight={() => {

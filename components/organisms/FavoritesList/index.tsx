@@ -12,42 +12,69 @@ export default function FavoritesList() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const [selectedApp, setSelectedApp] = useState<{
-    url: string;
+    url?: string;
     id: string;
     name: string;
+    isGeneratedApp?: boolean;
+    htmlContent?: string;
   } | null>(null);
 
   // Initialize from URL params on mount
   useEffect(() => {
     const appUrl = searchParams.get('appUrl');
     const appId = searchParams.get('appId');
+    const isGenerated = searchParams.get('isGenerated') === 'true';
     
-    if (appUrl && appId && !selectedApp) {
+    if (appId && !selectedApp) {
       const app = favoriteApps.find(a => a.id === appId);
       if (app) {
-        setSelectedApp({
-          url: appUrl,
-          id: appId,
-          name: app.appName
-        });
+        if (isGenerated) {
+          // For generated apps
+          setSelectedApp({
+            id: appId,
+            name: app.appName,
+            isGeneratedApp: true,
+            htmlContent: app.htmlContent
+          });
+        } else if (appUrl) {
+          // For external apps
+          setSelectedApp({
+            url: appUrl,
+            id: appId,
+            name: app.appName
+          });
+        }
       }
     }
   }, [searchParams, favoriteApps]);
 
-  const handleAppSelect = (appURL: string, appId: string) => {
+  const handleAppSelect = (appURL: string | null, appId: string, isGeneratedApp?: boolean) => {
     const app = favoriteApps.find(a => a.id === appId);
     if (app) {
       // Update URL with query params
       const params = new URLSearchParams();
-      params.set('appUrl', appURL);
       params.set('appId', appId);
-      router.push(`/?${params.toString()}`);
+      params.set('isGenerated', (isGeneratedApp || false).toString());
       
-      setSelectedApp({
-        url: appURL,
-        id: appId,
-        name: app.appName
-      });
+      if (!isGeneratedApp && appURL) {
+        params.set('appUrl', appURL);
+        
+        setSelectedApp({
+          url: appURL,
+          id: appId,
+          name: app.appName
+        });
+      } else {
+        // For generated apps
+        setSelectedApp({
+          id: appId,
+          name: app.appName,
+          isGeneratedApp: true,
+          htmlContent: app.htmlContent
+        });
+      }
+      
+      router.push(`/?${params.toString()}`);
     }
   };
 
@@ -89,12 +116,14 @@ export default function FavoritesList() {
       </div>
       
       {selectedApp && (
-        <MiniAppModal 
+        <MiniAppModal
           isOpen={true}
           onClose={handleModalClose}
-          appUrl={selectedApp.url}
+          appUrl={selectedApp.url || null}
           appId={selectedApp.id}
           appName={selectedApp.name}
+          isGeneratedApp={selectedApp.isGeneratedApp || false}
+          htmlContent={selectedApp.htmlContent || null}
         />
       )}
     </>

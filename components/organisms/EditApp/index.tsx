@@ -29,7 +29,9 @@ import { APP_CATEGORIES, AppCategory, AppDetails } from "@/lib/types/apps"
 import { Pencil } from "lucide-react"
 import { revalidateTags } from "@/app/actions/feedback"
 
-const FormSchema = z.object({
+// Schema for external apps
+const ExternalAppSchema = z.object({
+  appType: z.literal("external"),
   appName: z.string().min(2, {
     message: "App name must be at least 2 characters.",
   }),
@@ -47,6 +49,29 @@ const FormSchema = z.object({
   }),
 })
 
+// Schema for generated apps
+const GeneratedAppSchema = z.object({
+  appType: z.literal("generated"),
+  appName: z.string().min(2, {
+    message: "App name must be at least 2 characters.",
+  }),
+  categories: z.array(z.enum(APP_CATEGORIES)).min(1, {
+    message: "Please select at least one category.",
+  }),
+  mode: z.literal("Full-page"),
+  description: z.string().min(10, {
+    message: "Description must be at least 10 characters.",
+  }).max(500, {
+    message: "Description must not exceed 500 characters.",
+  }),
+})
+
+// Combined schema with discriminated union
+const FormSchema = z.discriminatedUnion("appType", [
+  ExternalAppSchema,
+  GeneratedAppSchema,
+])
+
 type FormData = z.infer<typeof FormSchema>
 
 interface EditAppProps {
@@ -57,16 +82,20 @@ interface EditAppProps {
 export default function EditApp({ app, onSuccess }: EditAppProps) {
   const [isOpen, setIsOpen] = useState(true)
   const [selectedCategories, setSelectedCategories] = useState<AppCategory[]>(app.categories)
+  
+  // Determine app type based on the app properties
+  const appType = app.isGeneratedApp ? "generated" : "external"
 
   const form = useForm<FormData>({
     resolver: zodResolver(FormSchema),
     defaultValues: {
+      appType,
       appName: app.appName,
-      appUrl: app.appURL,
+      ...(app.appURL ? { appUrl: app.appURL } : {}),
       categories: app.categories,
       mode: "Full-page",
       description: app.description,
-    },
+    } as FormData,
   })
 
   const handleOpenChange = (open: boolean) => {
@@ -89,13 +118,27 @@ export default function EditApp({ app, onSuccess }: EditAppProps) {
 
   const onSubmit = async (data: FormData) => {
     try {
-      const submitData = {
-        appName: data.appName,
-        appURL: data.appUrl,
-        categories: data.categories,
-        mode: data.mode,
-        description: data.description,
-      };
+      let submitData;
+      
+      if (data.appType === "external") {
+        submitData = {
+          appName: data.appName,
+          appURL: data.appUrl,
+          categories: data.categories,
+          mode: data.mode,
+          description: data.description,
+        };
+      } else {
+        // For generated apps
+        submitData = {
+          appName: data.appName,
+          htmlContent: app.htmlContent, // Keep the original HTML content
+          categories: data.categories,
+          mode: data.mode,
+          description: data.description,
+          isGeneratedApp: true,
+        };
+      }
 
       const existingKeyPair = getKeyPairFromLocalStorage();
       if (!existingKeyPair) {
@@ -132,6 +175,19 @@ export default function EditApp({ app, onSuccess }: EditAppProps) {
           </DrawerHeader>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 p-4 sm:p-6">
+              {/* App Type Information */}
+              <div className="bg-gray-50 p-3 rounded-md border border-gray-200 mb-4">
+                <p className="text-sm font-medium text-gray-700">
+                  App Type: {app.isGeneratedApp ? "Generated App" : "External App"}
+                </p>
+                {app.isGeneratedApp && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    Generated apps maintain their HTML content when updated
+                  </p>
+                )}
+              </div>
+              
+              {/* App Name - Common for both types */}
               <FormField
                 control={form.control}
                 name="appName"
@@ -149,23 +205,39 @@ export default function EditApp({ app, onSuccess }: EditAppProps) {
                   </FormItem>
                 )}
               />
-              <FormField
-                control={form.control}
-                name="appUrl"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-gray-700">App URL</FormLabel>
-                    <FormControl>
-                      <Input
-                        placeholder="https://your-app-url.com"
-                        {...field}
-                        className="border-gray-200 focus:border-[#368564] focus:ring-[#e6efe9]"
-                      />
-                    </FormControl>
-                    <FormMessage className="text-red-500" />
-                  </FormItem>
-                )}
-              />
+              
+              {/* App URL - Only for external apps */}
+              {appType === "external" && (
+                <FormField
+                  control={form.control}
+                  name="appUrl"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-gray-700">App URL</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="https://your-app-url.com"
+                          {...field}
+                          className="border-gray-200 focus:border-[#368564] focus:ring-[#e6efe9]"
+                        />
+                      </FormControl>
+                      <FormMessage className="text-red-500" />
+                    </FormItem>
+                  )}
+                />
+              )}
+              
+              {/* HTML Content Preview - Only for generated apps */}
+              {appType === "generated" && app.htmlContent && (
+                <div className="p-3 bg-gray-50 rounded-md border border-gray-200">
+                  <p className="text-sm font-medium text-gray-700">HTML Content</p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    The HTML content of this generated app will be preserved when updating
+                  </p>
+                </div>
+              )}
+              
+              {/* Categories - Common for both types */}
               <FormField
                 control={form.control}
                 name="categories"
@@ -193,6 +265,8 @@ export default function EditApp({ app, onSuccess }: EditAppProps) {
                   </FormItem>
                 )}
               />
+              
+              {/* Description - Common for both types */}
               <FormField
                 control={form.control}
                 name="description"
@@ -210,6 +284,7 @@ export default function EditApp({ app, onSuccess }: EditAppProps) {
                   </FormItem>
                 )}
               />
+              
               <Button
                 type="submit"
                 className="w-full bg-[#368564] hover:bg-[#2a684d] text-white font-semibold py-2 rounded-lg transition-all duration-300 shadow-sm hover:shadow-md"

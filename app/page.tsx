@@ -21,21 +21,39 @@ function HomeContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const [selectedApp, setSelectedApp] = useState<{
-    url: string;
+    url?: string;
     id: string;
     name: string;
+    isGeneratedApp?: boolean;
+    htmlContent?: string;
   } | null>(() => {
     // Initialize from query params if they exist
     const appUrl = searchParams.get('appUrl');
     const appId = searchParams.get('appId');
-    if (appUrl && appId) {
-      // Try to find app name from favorites or featured apps
+    const isGenerated = searchParams.get('isGenerated') === 'true';
+    
+    if (appId) {
+      // Try to find app from favorites or featured apps
       const app = [...favoriteApps, ...FEATURED_APPS].find(a => a.id === appId);
-      return {
-        url: appUrl,
-        id: appId,
-        name: app?.appName || ''
-      };
+      
+      if (isGenerated && app) {
+        // Check if app is from favoriteApps (has isGeneratedApp property)
+        const isFromFavorites = 'isGeneratedApp' in app;
+        
+        return {
+          id: appId,
+          name: app.appName || '',
+          isGeneratedApp: true,
+          // Only access htmlContent if the app is from favoriteApps
+          htmlContent: isFromFavorites && 'htmlContent' in app ? app.htmlContent || '' : ''
+        };
+      } else if (appUrl) {
+        return {
+          url: appUrl,
+          id: appId,
+          name: app?.appName || ''
+        };
+      }
     }
     return null;
   });
@@ -48,18 +66,41 @@ function HomeContent() {
     name: string;
   } | null>(null);
 
-  const handleAppSelect = (appURL: string, appId: string, appName: string) => {
+  const handleAppSelect = (appURL: string | null, appId: string, appName: string, isGeneratedApp: boolean = false) => {
     // Update URL with query params
     const params = new URLSearchParams();
-    params.set('appUrl', appURL);
     params.set('appId', appId);
-    router.push(`/?${params.toString()}`);
     
-    setSelectedApp({
-      url: appURL,
-      id: appId,
-      name: appName
-    });
+    if (isGeneratedApp) {
+      // For generated apps
+      params.set('isGenerated', 'true');
+      
+      // Find the app in favoriteApps to get the htmlContent
+      const app = favoriteApps.find(a => a.id === appId);
+      
+      // Check if app is from favoriteApps and has isGeneratedApp property
+      const isGeneratedAppWithContent = app && 'isGeneratedApp' in app && 'htmlContent' in app;
+      
+      setSelectedApp({
+        id: appId,
+        name: appName,
+        isGeneratedApp: true,
+        // Only access htmlContent if the app is a generated app with content
+        htmlContent: isGeneratedAppWithContent ? app.htmlContent || '' : ''
+      });
+    } else if (appURL) {
+      // For external apps
+      params.set('appUrl', appURL);
+      params.set('isGenerated', 'false');
+      
+      setSelectedApp({
+        url: appURL,
+        id: appId,
+        name: appName
+      });
+    }
+    
+    router.push(`/?${params.toString()}`);
   };
 
   const handleModalClose = () => {
@@ -117,7 +158,8 @@ function HomeContent() {
             onAppSelect={(url, id) => {
               const app = FEATURED_APPS.find(a => a.id === id);
               if (app) {
-                handleAppSelect(url, id, app.appName);
+                // Featured apps are always external
+                handleAppSelect(url, id, app.appName, false);
               }
             }}
           />
@@ -125,7 +167,9 @@ function HomeContent() {
             onAppSelect={(url, id) => {
               const app = favoriteApps.find(a => a.id === id);
               if (app) {
-                handleAppSelect(url, id, app.appName);
+                // Check if this is a generated app
+                const isGenerated = 'isGeneratedApp' in app && app.isGeneratedApp === true;
+                handleAppSelect(url, id, app.appName, isGenerated);
               }
             }}
           />
@@ -140,13 +184,15 @@ function HomeContent() {
       {/* Generate App FAB */}
       <GenerateAppFab onGenerateApp={handleGenerateApp} />
       
-      {/* Regular Mini App Modal */}
+      {/* Mini App Modal - handles both external and generated apps */}
       <MiniAppModal
         isOpen={!!selectedApp}
         onClose={handleModalClose}
         appUrl={selectedApp?.url || null}
         appId={selectedApp?.id || ""}
         appName={selectedApp?.name}
+        isGeneratedApp={selectedApp?.isGeneratedApp || false}
+        htmlContent={selectedApp?.htmlContent || null}
       />
       
       {/* Generated App Modal */}

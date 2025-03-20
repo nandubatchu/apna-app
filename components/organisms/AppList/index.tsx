@@ -24,7 +24,7 @@ export default function AppLauncherList() {
     return () => window.removeEventListener('storage', handleStorageChange);
   }, [refetch]);
 
-  const handleAppSelect = (appURL: string, appId: string) => {
+  const handleAppSelect = (appURL: string | null, appId: string, isGeneratedApp?: boolean) => {
     const app = apps.find(a => a.id === appId);
     if (app) {
       setSelectedApp(app)
@@ -116,12 +116,14 @@ export default function AppLauncherList() {
         )}
       </div>
 
-      <MiniAppModal 
+      <MiniAppModal
         isOpen={!!selectedApp}
         appUrl={selectedApp?.appURL || null}
         appId={selectedApp?.id || ""}
         appName={selectedApp?.appName || ""}
         onClose={handleClose}
+        isGeneratedApp={selectedApp?.isGeneratedApp || false}
+        htmlContent={selectedApp?.htmlContent || null}
       />
     </>
   )

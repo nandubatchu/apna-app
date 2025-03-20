@@ -11,7 +11,7 @@ export const FEATURED_APPS = [
 ] as const;
 
 interface FeaturedAppsProps {
-  onAppSelect: (appURL: string, appId: string) => void;
+  onAppSelect: (appURL: string | null, appId: string, isGeneratedApp?: boolean) => void;
 }
 
 export default function FeaturedApps({ onAppSelect }: FeaturedAppsProps) {
@@ -25,6 +25,7 @@ export default function FeaturedApps({ onAppSelect }: FeaturedAppsProps) {
             appId={app.id}
             appName={app.appName}
             appURL={app.appURL}
+            isGeneratedApp={false}
             onSelect={onAppSelect}
           />
         ))}

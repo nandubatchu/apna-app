@@ -11,6 +11,7 @@ export interface GeneratedApp {
   htmlContent: string;
   htmlContents: string[]; // Array of HTML contents for each iteration
   messages: ChatMessage[]; // Array of messages instead of a single prompt
+  published?: string[]; // Array of noteIds for published versions (same length as htmlContents)
   createdAt: number;
   updatedAt: number;
   icon?: string;

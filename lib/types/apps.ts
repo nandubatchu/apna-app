@@ -15,8 +15,10 @@ export const APP_CATEGORIES = [
 export type AppCategory = typeof APP_CATEGORIES[number];
 
 export interface AppDetails {
-    appURL: string;
+    appURL?: string;
     appName: string;
+    htmlContent?: string;
+    isGeneratedApp?: boolean;
     id: string;
     pubkey: string;
     reactions: NostrEvent[];
@@ -30,8 +32,10 @@ export interface AppDetails {
 }
 
 export interface ProcessedAppEvent extends NostrEvent {
-    appURL: string;
+    appURL?: string;
     appName: string;
+    htmlContent?: string;
+    isGeneratedApp?: boolean;
     categories: AppCategory[];
     mode: "Full-page";
     description: string;

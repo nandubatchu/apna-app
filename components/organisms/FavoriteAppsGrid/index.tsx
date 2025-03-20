@@ -3,7 +3,7 @@ import { useFavorites } from '@/lib/hooks/useFavorites';
 import { AppIcon } from '@/components/molecules/AppIcon';
 
 interface FavoriteAppsGridProps {
-  onAppSelect: (appURL: string, appId: string) => void;
+  onAppSelect: (appURL: string | null, appId: string, isGeneratedApp?: boolean) => void;
 }
 
 export default function FavoriteAppsGrid({ onAppSelect }: FavoriteAppsGridProps) {
@@ -44,6 +44,7 @@ export default function FavoriteAppsGrid({ onAppSelect }: FavoriteAppsGridProps)
             appId={app.id}
             appName={app.appName}
             appURL={app.appURL}
+            isGeneratedApp={app.isGeneratedApp}
             onSelect={onAppSelect}
           />
         ))}

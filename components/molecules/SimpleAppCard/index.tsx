@@ -4,15 +4,15 @@ import { getFaviconUrl } from '@/lib/utils';
 
 interface SimpleAppCardProps {
   app: AppDetails;
-  onSelect: (appURL: string, appId: string) => void;
+  onSelect: (appURL: string | null, appId: string, isGeneratedApp?: boolean) => void;
 }
 
 export function SimpleAppCard({ app, onSelect }: SimpleAppCardProps) {
-  const faviconUrl = getFaviconUrl(app.appURL);
+  const faviconUrl = app.appURL ? getFaviconUrl(app.appURL) : null;
 
   return (
     <button
-      onClick={() => onSelect(app.appURL, app.id)}
+      onClick={() => onSelect(app.appURL || null, app.id, app.isGeneratedApp)}
       className="w-full bg-white rounded-xl shadow-sm hover:shadow-xl transition-all duration-300"
     >
       <div className="flex items-center p-4 gap-4">
