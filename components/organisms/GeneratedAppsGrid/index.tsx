@@ -126,15 +126,9 @@ export default function GeneratedAppsGrid({ onAppSelect }: GeneratedAppsGridProp
                 appName={app.name}
                 appURL={`data:text/html,${encodeURIComponent(app.htmlContent)}`}
                 isGeneratedApp={true}
+                isPublished={app.published && app.published.some(item => !!item)}
                 onSelect={handleAppSelect}
               />
-              
-              {/* Published indicator */}
-              {app.published && app.published.some(item => !!item) && (
-                <div className="absolute -top-1 -right-1 bg-[#368564] text-white rounded-full p-1 shadow-md" title="Published">
-                  <Globe className="h-3 w-3" />
-                </div>
-              )}
             </div>
             
             {/* Context menu for right-click */}
