@@ -4,8 +4,9 @@ import { useGeneratedApps } from "@/lib/contexts/GeneratedAppsContext";
 import { useState, useRef, useEffect } from "react";
 import { AppIcon } from "@/components/molecules/AppIcon";
 import { Button } from "@/components/ui/button";
-import { Trash2, MoreVertical, Globe } from "lucide-react";
+import { Trash2, MoreVertical, Globe, Pencil } from "lucide-react";
 import { ChatMessage } from "@/lib/generatedAppsDB";
+import { RenameAppSheet } from "@/components/molecules/RenameAppSheet";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -30,6 +31,7 @@ interface GeneratedAppsGridProps {
 export default function GeneratedAppsGrid({ onAppSelect }: GeneratedAppsGridProps) {
   const { apps, loading, error, deleteApp } = useGeneratedApps();
   const [appToDelete, setAppToDelete] = useState<string | null>(null);
+  const [appToRename, setAppToRename] = useState<string | null>(null);
   const [contextMenuPosition, setContextMenuPosition] = useState<{ x: number; y: number } | null>(null);
   const [contextMenuApp, setContextMenuApp] = useState<string | null>(null);
   const longPressTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -157,6 +159,17 @@ export default function GeneratedAppsGrid({ onAppSelect }: GeneratedAppsGridProp
                     </DropdownMenuItem>
                   )}
                   
+                  {/* Rename option */}
+                  <DropdownMenuItem
+                    onClick={() => {
+                      setContextMenuApp(null);
+                      setAppToRename(app.id);
+                    }}
+                  >
+                    <Pencil className="h-4 w-4 mr-2" />
+                    Rename
+                  </DropdownMenuItem>
+                  
                   {/* Delete option */}
                   <DropdownMenuItem
                     className="text-red-500 focus:text-red-500"
@@ -189,6 +202,16 @@ export default function GeneratedAppsGrid({ onAppSelect }: GeneratedAppsGridProp
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Rename App Sheet */}
+      {appToRename && (
+        <RenameAppSheet
+          appId={appToRename}
+          appName={apps.find(app => app.id === appToRename)?.name || ''}
+          isOpen={!!appToRename}
+          onOpenChange={(open) => !open && setAppToRename(null)}
+        />
+      )}
     </div>
   );
 }
