@@ -199,7 +199,7 @@ export async function fetchAppListAction(revalidate = false): Promise<AppDetails
         ['app-list'],
         {
             tags: ['ApnaMiniAppDetails'],
-            revalidate: 3600 // Cache for an hour
+            revalidate: 300 // Cache for an hour
         }
     )();
 }
