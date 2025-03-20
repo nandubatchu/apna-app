@@ -93,6 +93,7 @@ Nostr API available under ApnaApp instance \`apna.nostr\`:
   * getActiveUserProfile(): Get the currently active user profile
   * fetchUserMetadata(npub): Fetch metadata for a specific user
   * updateProfileMetadata(profile): Update the current user's profile metadata
+  * fetchUserProfile(npub): Get the profile of a specific user
   * followUser(npub): Follow a user
   * unfollowUser(npub): Unfollow a user
 
