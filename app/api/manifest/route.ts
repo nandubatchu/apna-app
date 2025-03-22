@@ -5,6 +5,7 @@ interface FavoriteApp {
   name: string;
   appUrl: string;
   appId: string;
+  isGeneratedApp?: boolean;
 }
 
 export async function GET(request: Request) {
@@ -17,18 +18,43 @@ export async function GET(request: Request) {
   if (favorites) {
     try {
       const favoriteApps: FavoriteApp[] = JSON.parse(decodeURIComponent(favorites));
-      shortcuts = favoriteApps.map(app => ({
-        name: app.name,
-        short_name: app.name,
-        url: `/?appUrl=${encodeURIComponent(app.appUrl)}&appId=${app.appId}`,
-        icons: [{
-          // The favicon endpoint will return a PNG or fall back to default icon
-          src: `/api/favicon?appUrl=${encodeURIComponent(app.appUrl)}`,
-          sizes: "192x192",
-          type: "image/png",
-          purpose: "any"
-        }]
-      }));
+      shortcuts = favoriteApps.map(app => {
+        // Determine if this is a generated app
+        const isGenerated = app.isGeneratedApp === true;
+        
+        // Build the URL with appropriate parameters
+        let url = `/?appId=${app.appId}`;
+        
+        // Add appUrl parameter only for non-generated apps
+        if (!isGenerated && app.appUrl) {
+          url += `&appUrl=${encodeURIComponent(app.appUrl)}`;
+        }
+        
+        // Add isGenerated parameter for generated apps
+        if (isGenerated) {
+          url += `&isGenerated=true`;
+        }
+        
+        // Create the shortcut object
+        const shortcut: any = {
+          name: app.name,
+          short_name: app.name,
+          url
+        };
+        
+        // Only add icons for non-generated apps
+        if (!isGenerated && app.appUrl) {
+          shortcut.icons = [{
+            // The favicon endpoint will return a PNG or fall back to default icon
+            src: `/api/favicon?appUrl=${encodeURIComponent(app.appUrl)}`,
+            sizes: "192x192",
+            type: "image/png",
+            purpose: "any"
+          }];
+        }
+        
+        return shortcut;
+      });
     } catch (error) {
       console.error('Error parsing favorites:', error);
     }
