@@ -62,7 +62,7 @@ export async function GET(request: Request) {
   // console.log(pubkey, favorites, shortcuts)
   const manifest = {
     theme_color: "#368564",
-    background_color: "#f8faf9",
+    background_color: "#368564",
     display: "standalone",
     orientation: "portrait",
     scope: "/",
@@ -126,7 +126,7 @@ export async function GET(request: Request) {
   return new NextResponse(JSON.stringify(manifest, null, 2), {
     headers: {
       'Content-Type': 'application/manifest+json',
-      'Cache-Control': 'public, max-age=3600'
+      // 'Cache-Control': 'public, max-age=3600'
     }
   });
 }
