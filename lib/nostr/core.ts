@@ -111,35 +111,29 @@ export const fetchAllFromAPI = async (
 export const subscribeToEvents = async (filter: Filter, callback: (e: NostrEvent) => void) => {
     let lastEventTime = Math.floor(Date.now() / 1000);
     
-    // Initial fetch
-    const initialEvents = await pool.querySync(DEFAULT_RELAYS, filter, {
-        maxWait: 5000
-    });
-    initialEvents.forEach(e => {
-        console.log('## got event:', e)
-        callback(e)
-    });
-
-    // Set up polling for new events
-    const pollInterval = setInterval(async () => {
-        const newFilter = {
-            ...filter,
-            since: lastEventTime
-        };
-        
-        const newEvents = await pool.querySync(DEFAULT_RELAYS, newFilter, {
+    // Create two filters: one for historical events and one for new events
+    const historicalFilter = { ...filter };
+    const newEventsFilter = { ...filter, since: lastEventTime };
+    
+    // Set up subscription using subscribeMany for both historical and new events
+    const sub = pool.subscribeMany(
+        DEFAULT_RELAYS,
+        [historicalFilter],
+        {
+            onevent: (event) => {
+                console.log('## got event:', event);
+                
+                // Update lastEventTime if this is a newer event
+                if (event.created_at > lastEventTime) {
+                    lastEventTime = event.created_at;
+                }
+                
+                callback(event);
+            },
             maxWait: 5000
-        });
-        
-        if (newEvents.length > 0) {
-            lastEventTime = Math.max(...newEvents.map(e => e.created_at));
-            newEvents.forEach(e => {
-                console.log('## got event:', e)
-                callback(e)
-            });
         }
-    }, 5000); // Poll every 5 seconds
-
-    // Return cleanup function
-    return () => clearInterval(pollInterval);
+    );
+    
+    // Return cleanup function that closes the subscription
+    return () => sub.close();
 }
