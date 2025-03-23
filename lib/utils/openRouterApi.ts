@@ -95,7 +95,7 @@ export async function callOpenRouterApi({
   }
 
   // Get model from params, localStorage, or use default
-  const userModel = providedModel || getModelFromStorage() || "anthropic/claude-3.7-sonnet";
+  const userModel = providedModel || getModelFromStorage();
   const modelToUse = userModel || DEFAULT_MODEL;
 
   // Use provided messages or create initial messages from prompt
