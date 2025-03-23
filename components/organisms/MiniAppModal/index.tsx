@@ -121,12 +121,12 @@ export default function MiniAppModal({
                 srcDoc={isGeneratedApp && htmlContent ? htmlContent : undefined}
                 style={{
                   overflow: "hidden",
-                  height: "100%",
+                  height: "100dvh",
                   width: "100%",
                   border: "none"
                 }}
-                height="100%"
-                width="100%"
+                // height="100%"
+                // width="100%"
                 allow="camera"
               />
             )}
