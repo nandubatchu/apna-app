@@ -1,5 +1,9 @@
 import { ChatMessage } from "@/lib/generatedAppsDB";
 
+const interfaceUrl = "https://cdn.jsdelivr.net/npm/@apna/sdk/src/interfaces/nostr/index.ts"
+let tsContent: string;
+fetch(interfaceUrl).then(async r => {tsContent = await r.text(); console.log(tsContent)})
+
 // HTML template that will be used as the base for all generated apps
 export const BASE_HTML_TEMPLATE = `
 <!DOCTYPE html>
@@ -87,31 +91,12 @@ Approach:
 * Emphasize mobile responsiveness and accessibility (ARIA, semantic tags, etc.).
 * Make sure you pick the right API methods from the interface documentation provided for ApnaApp of @apna/sdk.
 
-Nostr API available under ApnaApp instance \`apna.nostr\`:
+Nostr API interface available under ApnaApp instance \`apna.nostr\`:
+\`\`\`typescript
+${tsContent}
+\`\`\`
 
-  User Management:
-  * getActiveUserProfile(): Get the currently active user profile
-  * fetchUserMetadata(npub): Fetch metadata for a specific user
-  * updateProfileMetadata(profile): Update the current user's profile metadata
-  * fetchUserProfile(npub): Get the profile of a specific user
-  * followUser(npub): Follow a user
-  * unfollowUser(npub): Unfollow a user
-
-  Content Management:
-  * fetchNote(noteId): Fetch a specific note
-  * fetchNoteAndReplies(noteId): Fetch a note and its replies
-  * publishNote(content): Publish a new note
-  * repostNote(noteId, quoteContent): Repost a note with optional quote content
-  * likeNote(noteId): Like a note
-  * replyToNote(noteId, content): Reply to a note
-
-  Feed Management:
-  * fetchFeed(feedType, since, until, limit): Fetch a feed of notes
-  * fetchUserFeed(npub, feedType, since, until, limit): Fetch a user's feed
-  * subscribeToFeed(feedType, onevent): Subscribe to a feed for real-time updates
-  * subscribeToUserFeed(npub, feedType, onevent): Subscribe to a user's feed
-
-  Note: Full typescript interface documentation for reference is available at [ApnaApp Nostr Interface](https://cdn.jsdelivr.net/npm/@apna/sdk/src/interfaces/nostr/index.ts)
+Note: Full typescript interface documentation for reference is available at [ApnaApp Nostr Interface](${interfaceUrl})
 
 Optionally:
 * Explain briefly why you made certain layout or design choices to improve usability or clarity.
@@ -119,7 +104,7 @@ Optionally:
 Base boilerplate template: 
 \`\`\`html
 ${BASE_HTML_TEMPLATE}
-\`\`\
+\`\`\`
 `
     },
     {
