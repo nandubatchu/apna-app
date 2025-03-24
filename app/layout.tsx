@@ -10,7 +10,7 @@ const inter = Inter({ subsets: ['latin'] })
 export const metadata: Metadata = {
   title: 'Apna Apps',
   description: 'Your favorite mini apps in one place',
-  manifest: "manifest.webmanifest.old"
+  manifest: "manifest.webmanifest"
 }
 
 export const viewport = {
