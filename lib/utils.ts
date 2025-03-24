@@ -239,7 +239,29 @@ export function getLocalProfiles(): IUserKeyPair[] {
   return profiles.filter(p => p.isRemoteSigner !== true);
 }
 
-export function sendMessageToServiceWorker(message: any) {
+const requestNotificationPermission = async () => {
+  if (!('Notification' in window)) {
+    console.log('This browser does not support notifications.');
+    return;
+  }
+
+  try {
+    const permission = await Notification.requestPermission();
+    if (permission === 'granted') {
+      console.log('Notification permission granted.');
+      // You can proceed with subscribing to push notifications here
+    } else if (permission === 'denied') {
+      console.log('Notification permission denied.');
+    } else {
+      console.log('Notification permission dismissed (default).');
+    }
+  } catch (error) {
+    console.error('Error requesting notification permission:', error);
+  }
+};
+
+export async function sendMessageToServiceWorker(message: any) {
+  await requestNotificationPermission();
   return new Promise((resolve, reject) => {
       if (!navigator.serviceWorker.controller) {
           reject('No active Service Worker');
