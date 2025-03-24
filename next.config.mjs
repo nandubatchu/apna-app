@@ -19,6 +19,7 @@ const withPWA = nextPWA({
     register: true, // Register the PWA service worker
     skipWaiting: true, // Skip waiting for service worker activation
     customWorkerDir: "worker", // Custom service worker file path
+    buildExcludes: [/app-build-manifest.json$/]
 });
 
 // Export the combined configuration for Next.js with PWA support
