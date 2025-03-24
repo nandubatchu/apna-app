@@ -10,7 +10,6 @@ const inter = Inter({ subsets: ['latin'] })
 export const metadata: Metadata = {
   title: 'Apna Apps',
   description: 'Your favorite mini apps in one place',
-  manifest: "manifest.webmanifest"
 }
 
 export const viewport = {
@@ -31,7 +30,7 @@ export default function RootLayout({
     <html lang="en" className="h-full">
       <head />
       <body className={`${inter.className} antialiased h-full`}>
-        {/* <ManifestHandler /> */}
+        <ManifestHandler />
         <GeneratedAppsProvider>
           <div className="min-h-[100dvh] flex flex-col">
             <div className="sticky top-0 z-50">
