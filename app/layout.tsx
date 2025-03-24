@@ -4,6 +4,7 @@ import { Inter } from 'next/font/google'
 import TopBar from '@/components/organisms/TopBar'
 import { ManifestHandler } from '@/components/ManifestHandler'
 import { GeneratedAppsProvider } from '@/lib/contexts/GeneratedAppsContext'
+import Script from 'next/script'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -42,6 +43,12 @@ export default function RootLayout({
           </div>
         </GeneratedAppsProvider>
       </body>
+      <Script id="my-sw">
+        {` 
+          if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js')
+          else console.warning("Ups, your navigator doesn't support service worker, offline feature wont work, update your browser or chose other modern browser")
+        `}
+      </Script>
     </html>
   )
 }
