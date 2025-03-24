@@ -6,6 +6,14 @@ declare let self: ServiceWorkerGlobalScope
 //
 // self.__WB_DISABLE_DEV_LOGS = true
 
+self.addEventListener('install', () => {
+    console.log('Service Worker: Installed');
+  });
+  
+  self.addEventListener('activate', () => {
+    console.log('Service Worker: Activated');
+  });
+
 self.addEventListener('push',  (event) => {
   const data = JSON.parse(event?.data.text() || '{}')
   event?.waitUntil(
