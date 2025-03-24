@@ -238,3 +238,29 @@ export function getLocalProfiles(): IUserKeyPair[] {
   const profiles = getAllUserProfilesFromLocalStorage();
   return profiles.filter(p => p.isRemoteSigner !== true);
 }
+
+export function sendMessageToServiceWorker(message: any) {
+  return new Promise((resolve, reject) => {
+      if (!navigator.serviceWorker.controller) {
+          reject('No active Service Worker');
+          return;
+      }
+      const messageChannel = new MessageChannel(); // Create the channel
+      messageChannel.port1.onmessage = (event) => { // Listen for response
+          resolve(event.data);
+      };
+      navigator.serviceWorker.controller.postMessage(message, [messageChannel.port2]); // Send message and transfer port2
+  });
+}
+
+export async function registerPeriodicSync(tag: string, minInterval: Number) {
+  const registration = await navigator.serviceWorker.ready;
+  try {
+    // @ts-ignore
+    await registration.periodicSync.register(tag, {
+      minInterval
+    });
+  } catch {
+    console.log("Periodic Sync could not be registered!");
+  }
+}
