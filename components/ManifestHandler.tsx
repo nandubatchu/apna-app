@@ -59,11 +59,11 @@ export function ManifestHandler() {
       }
     }
 
-    // Poll for changes every 5 seconds as IndexedDB doesn't have native change events
-    const interval = setInterval(updateManifestUrl, 5000)
+    // // Poll for changes every 5 seconds as IndexedDB doesn't have native change events
+    // const interval = setInterval(updateManifestUrl, 5000)
 
     return () => {
-      clearInterval(interval)
+      // clearInterval(interval)
       const existingLink = document.querySelector('link[rel="manifest"]')
       if (existingLink) {
         existingLink.remove()

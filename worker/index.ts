@@ -1,4 +1,5 @@
 // @ts-nocheck
+import { handleFetchFeedPushEvent } from './nostr';
 declare let self: ServiceWorkerGlobalScope
 
 self.__WB_MANIFEST
@@ -6,27 +7,36 @@ self.__WB_MANIFEST
 // To disable all workbox logging during development, you can set self.__WB_DISABLE_DEV_LOGS to true
 // https://developers.google.com/web/tools/workbox/guides/configure-workbox#disable_logging
 //
-// self.__WB_DISABLE_DEV_LOGS = true
+self.__WB_DISABLE_DEV_LOGS = true
+
+
+// service worker event hooks
 
 self.addEventListener('install', () => {
-    console.log('Service Worker: Installed');
-  });
-  
-  self.addEventListener('activate', () => {
-    console.log('Service Worker: Activated');
-  });
+  console.log('Service Worker: Installed');
+});
 
-self.addEventListener('push',  (event) => {
+self.addEventListener('activate', () => {
+  console.log('Service Worker: Activated');
+});
+
+self.addEventListener('push', (event) => {
   const data = JSON.parse(event?.data.text() || '{}')
+
+  if (data.type === "NOSTR_FETCH_FEED") {
+    event?.waitUntil(handleFetchFeedPushEvent(data))
+    return
+  }
+
   event?.waitUntil(
     self.registration.showNotification(data.title, {
       body: data.message,
-      icon: '/icons/android-chrome-192x192.png'
+      icon: '/icon-192x192.png'
     })
   )
 })
 
-self.addEventListener('notificationclick',  (event) => {
+self.addEventListener('notificationclick', (event) => {
   event?.notification.close()
   event?.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function (clientList) {
@@ -46,30 +56,12 @@ self.addEventListener('notificationclick',  (event) => {
 
 
 self.addEventListener('message', (event) => {
-    const data = event.data;
-    if (data.type === 'SHOW_NOTIFICATION') {
-        self.registration.showNotification(data.title, data.options);
-        if (event.ports[0]) { // Access the transferred port
-            event.ports[0].postMessage({ status: 'Notification queued' }); // Send response
-        }
+  const data = event.data;
+  if (data.type === 'SHOW_NOTIFICATION') {
+    self.registration.showNotification(data.title, data.options);
+    if (event.ports[0]) { // Access the transferred port
+      event.ports[0].postMessage({ status: 'Notification queued' }); // Send response
     }
+  }
 });
 
-// Handle periodic sync events
-self.addEventListener('periodicsync', (event) => {
-    if (event.tag === 'test') {
-        event.waitUntil(
-            (async () => {
-                // Show a notification when periodic sync occurs
-                await self.registration.showNotification('Periodic Sync', {
-                    body: 'This notification was triggered by periodic sync',
-                    icon: '/icon-192x192.png',
-                    badge: '/icon-192x192.png'
-                });
-
-                // You could also fetch data, update caches, etc.
-                console.log('Periodic sync event fired:', event.tag);
-            })()
-        );
-    }
-});
