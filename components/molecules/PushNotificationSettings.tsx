@@ -17,9 +17,11 @@ export default function PushNotificationSettings() {
   const [success, setSuccess] = useState<string | null>(null)
   const [isTestingNotification, setIsTestingNotification] = useState(false)
   const [userKeyPair, setUserKeyPair] = useState<any>(null)
+  const [isBrowser, setIsBrowser] = useState<boolean>(false)
   
   // Get the user's key pair on component mount
   useEffect(() => {
+    setIsBrowser(true)
     const keyPair = getKeyPairFromLocalStorage()
     setUserKeyPair(keyPair)
   }, [])
@@ -27,6 +29,11 @@ export default function PushNotificationSettings() {
   // Function to convert URL base64 to Uint8Array
   // This is needed for the applicationServerKey
   const urlBase64ToUint8Array = (base64String: string) => {
+    // Check if we're in a browser environment
+    if (typeof window === 'undefined') {
+      throw new Error('This function can only be used in a browser environment')
+    }
+    
     const padding = '='.repeat((4 - (base64String.length % 4)) % 4)
     const base64 = (base64String + padding)
       .replace(/-/g, '+')
@@ -49,6 +56,11 @@ export default function PushNotificationSettings() {
       // Check if user is logged in
       if (!userKeyPair || !userKeyPair.npub) {
         throw new Error('You need to be logged in to subscribe to push notifications')
+      }
+
+      // Check if we're in a browser environment
+      if (typeof window === 'undefined') {
+        throw new Error('This operation can only be performed in a browser')
       }
 
       // Check if service workers are supported
@@ -96,6 +108,11 @@ export default function PushNotificationSettings() {
         throw new Error('You need to be logged in to manage push notifications')
       }
 
+      // Check if we're in a browser environment
+      if (typeof window === 'undefined') {
+        throw new Error('This operation can only be performed in a browser')
+      }
+      
       // Check if service workers are supported
       if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
         throw new Error('Push notifications are not supported in this browser')
@@ -140,6 +157,11 @@ export default function PushNotificationSettings() {
         throw new Error('You need to be logged in to test push notifications');
       }
 
+      // Check if we're in a browser environment
+      if (typeof window === 'undefined') {
+        throw new Error('This operation can only be performed in a browser');
+      }
+      
       // Check if service workers are supported
       if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
         throw new Error('Push notifications are not supported in this browser');
@@ -190,7 +212,7 @@ export default function PushNotificationSettings() {
         </Alert>
       )}
       
-      {!('serviceWorker' in navigator) || !('PushManager' in window) ? (
+      {isBrowser && (!('serviceWorker' in navigator) || !('PushManager' in window)) ? (
         <Alert variant="destructive">
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription>

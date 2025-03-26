@@ -15,12 +15,19 @@ export function PushNotificationToggle({
 }: PushNotificationToggleProps) {
   const [isSubscribed, setIsSubscribed] = useState<boolean>(false)
   const [isLoading, setIsLoading] = useState<boolean>(false)
+  const [isBrowser, setIsBrowser] = useState<boolean>(false)
 
   useEffect(() => {
+    // Set isBrowser to true once component is mounted on client
+    setIsBrowser(true)
+    
     // Check if already subscribed on component mount
     const checkSubscriptionStatus = async () => {
       try {
-        if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+        // Only run this check in the browser
+        if (typeof window === 'undefined' ||
+            !('serviceWorker' in navigator) ||
+            !('PushManager' in window)) {
           return
         }
 
