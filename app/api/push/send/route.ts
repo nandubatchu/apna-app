@@ -1,9 +1,17 @@
-import { NextResponse } from 'next/server'
+import { NextResponse, NextRequest } from 'next/server'
 import { pushSubscriptionStore, SERVER_NSEC } from '@/lib/pushSubscriptionStore'
 import { sendPushNotification } from '@/app/actions/push-notifications'
 import { sendPushUnsubscription } from '@/lib/nostr/nip04Utils'
+import { validateNip98Auth } from '@/lib/nostr/nip98Auth'
+import nip98Config from '@/lib/nostr/nip98Config'
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
+  // Validate NIP-98 authentication with route-specific authorized pubkeys
+  const authError = await validateNip98Auth(request, nip98Config.authorizedPubkeys.pushSend)
+  if (authError) {
+    return authError
+  }
+  
   try {
     const { title, message } = await request.json()
     

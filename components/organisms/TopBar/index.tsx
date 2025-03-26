@@ -32,6 +32,8 @@ export default function TopBar(props: TopBarProps = {}) {
         return 'Community Feedback'
       case '/my-apps':
         return 'My Apps'
+      case '/admin':
+        return 'Admin Dashboard'
       default:
         return appName || ''
     }
@@ -45,7 +47,7 @@ export default function TopBar(props: TopBarProps = {}) {
     }
   }
 
-  const isSimpleHeader = pathname === '/settings' || pathname === '/feedback' || pathname === '/my-apps' || !!appId
+  const isSimpleHeader = pathname === '/settings' || pathname === '/feedback' || pathname === '/my-apps' || pathname === '/admin' || !!appId
   const displayBackButton = showBackButton || isSimpleHeader
 
   return (

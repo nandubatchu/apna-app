@@ -1,12 +1,20 @@
-import { NextResponse } from 'next/server'
+import { NextResponse, NextRequest } from 'next/server'
 import { pushSubscriptionStore, SERVER_NSEC } from '@/lib/pushSubscriptionStore'
 import { sendPushNotification } from '@/app/actions/push-notifications'
 import { sendPushUnsubscription } from '@/lib/nostr/nip04Utils'
+import { validateNip98Auth } from '@/lib/nostr/nip98Auth'
+import nip98Config from '@/lib/nostr/nip98Config'
 
-// This is a simple test endpoint to send a test notification
-// In a production environment, you would have proper authentication and authorization
+// This endpoint is protected with NIP-98 authentication
+// Only authorized Nostr pubkeys can access it
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
+  // Validate NIP-98 authentication with route-specific authorized pubkeys
+  const authError = await validateNip98Auth(request, nip98Config.authorizedPubkeys.pushTest)
+  if (authError) {
+    return authError
+  }
+  
   try {
     const subscriptions = await pushSubscriptionStore.getAllSubscriptions()
     

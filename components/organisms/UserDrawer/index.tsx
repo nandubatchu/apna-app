@@ -3,16 +3,40 @@
 import React, { useEffect, useState } from 'react'
 import { Sheet, SheetContent, SheetTrigger } from '../../ui/sheet'
 import { Button } from '../../ui/button'
-import { User, Settings, MessageSquare, Layout } from 'lucide-react'
+import { User, Settings, MessageSquare, Layout, ShieldAlert } from 'lucide-react'
 import Link from 'next/link'
 import { getKeyPairFromLocalStorage } from '../../../lib/utils'
+import nip98Config from '@/lib/nostr/nip98Config'
+import { decode } from 'nostr-tools/nip19'
 
 export default function UserDrawer() {
   const [keyPair, setKeyPair] = useState<{ npub: string; nsec: string } | null>(null)
   const [open, setOpen] = useState(false)
+  const [isAdmin, setIsAdmin] = useState(false)
 
   useEffect(() => {
-    setKeyPair(getKeyPairFromLocalStorage())
+    const userKeyPair = getKeyPairFromLocalStorage()
+    setKeyPair(userKeyPair)
+    
+    // Check if the user is an admin
+    if (userKeyPair) {
+      try {
+        // Decode the npub to get the raw hex pubkey
+        const decoded = decode(userKeyPair.npub)
+        
+        if (decoded.type === 'npub') {
+          const pubkey = decoded.data as string
+          const authorizedPubkeys = [
+            ...nip98Config.authorizedPubkeys.pushSend,
+            ...nip98Config.authorizedPubkeys.pushTest
+          ]
+          setIsAdmin(authorizedPubkeys.includes(pubkey))
+        }
+      } catch (error) {
+        console.error('Error decoding npub:', error)
+        setIsAdmin(false)
+      }
+    }
   }, [])
 
   return (
@@ -54,6 +78,15 @@ export default function UserDrawer() {
                   <span className="text-gray-700">Give Feedback</span>
                 </Button>
               </Link>
+              
+              {isAdmin && (
+                <Link href="/admin" onClick={() => setOpen(false)}>
+                  <Button variant="ghost" className="w-full justify-start hover:bg-[#e6efe9]">
+                    <ShieldAlert className="w-5 h-5 mr-2 text-[#368564]" />
+                    <span className="text-gray-700">Admin</span>
+                  </Button>
+                </Link>
+              )}
             </nav>
           </div>
         </div>
