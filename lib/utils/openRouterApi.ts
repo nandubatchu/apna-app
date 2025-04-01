@@ -114,6 +114,9 @@ export async function callOpenRouterApi({
         model: modelToUse,
         messages: chatMessages,
         // max_tokens: 4000,
+        provider: {
+          sort: 'throughput'
+        }
       }),
     });
 
