@@ -11,7 +11,6 @@ import MiniAppModal from "@/components/organisms/MiniAppModal";
 import GeneratedAppModal from "@/components/organisms/GeneratedAppModal";
 import GenerateAppFab from "@/components/molecules/GenerateAppFab";
 import BottomNav from "@/components/organisms/BottomNav";
-import type { AppDetails } from '@/lib/hooks/useApps';
 import { GeneratedApp, ChatMessage } from '@/lib/generatedAppsDB';
 
 function HomeContent() {
