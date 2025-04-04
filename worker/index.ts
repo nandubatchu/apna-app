@@ -13,6 +13,13 @@ self.__WB_DISABLE_DEV_LOGS = true
 // service worker event hooks
 
 self.addEventListener('install', () => {
+  event.waitUntil(
+    caches.open('my-cache').then((cache) => {
+      return cache.addAll([
+        '/notification-badge.png',
+      ]);
+    })
+  );
   console.log('Service Worker: Installed');
 });
 
