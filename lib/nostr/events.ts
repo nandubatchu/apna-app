@@ -1,8 +1,7 @@
-import { getPublicKey, VerifiedEvent, Event as NostrEvent, Filter } from 'nostr-tools'
+import { getPublicKey, VerifiedEvent } from 'nostr-tools'
 import * as nip19 from 'nostr-tools/nip19'
 import { setNostrWasm, generateSecretKey, finalizeEvent, verifyEvent } from 'nostr-tools/wasm'
 import { initNostrWasm } from 'nostr-wasm'
-import * as crypto from 'crypto'
 import { pool, DEFAULT_RELAYS } from './core'
 import { isRemoteSignerConnected, signEventWithRemoteSigner } from './nip46'
 import { isRemoteSignerProfile } from '@/lib/utils'
@@ -134,42 +133,4 @@ export const publishKind7 = async (nsec: string, tags: any[], content: string = 
         content,
     }
     return (await publishEvent(nsec, event)) as VerifiedEvent & { kind: 7 }
-}
-
-export const CreateEvent = async (nsec: string) => {
-    const decodedNsec = nip19.decode(nsec);
-    if (decodedNsec.type != "nsec") {
-        throw new Error("invalid nsec");
-    }
-    
-    const sk = decodedNsec.data;
-    await initPromise;
-    
-    let event = finalizeEvent({
-        kind: 1,
-        created_at: Math.floor(Date.now() / 1000),
-        tags: [],
-        content: 'hello world',
-    }, sk)
-
-    let isGood = verifyEvent(event)
-    if (isGood) {
-        const pub = await pool.publish(DEFAULT_RELAYS, event)
-        console.log(`published event - ${pub}`)
-        
-        const filter: Filter = {
-            kinds: [1],
-            authors: [getPublicKey(sk)]
-        }
-        
-        const events = await pool.querySync(DEFAULT_RELAYS, filter, {
-            maxWait: 5000
-        })
-        
-        events.forEach(e => {
-            console.log('got event:', e)
-        })
-        
-        console.log(nip19.decode("note1lsu33avk5cu9rww002kuwkjd68ezpn33aq2yxuxc9euxn077x3ssz2d4fs"))
-    }
 }
