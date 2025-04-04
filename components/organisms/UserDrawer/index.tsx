@@ -72,12 +72,6 @@ export default function UserDrawer() {
                   <span className="text-gray-700">Settings</span>
                 </Button>
               </Link>
-              <Link href="/feedback" onClick={() => setOpen(false)}>
-                <Button variant="ghost" className="w-full justify-start hover:bg-[#e6efe9]">
-                  <MessageSquare className="w-5 h-5 mr-2 text-[#368564]" />
-                  <span className="text-gray-700">Give Feedback</span>
-                </Button>
-              </Link>
               
               {isAdmin && (
                 <Link href="/admin" onClick={() => setOpen(false)}>
