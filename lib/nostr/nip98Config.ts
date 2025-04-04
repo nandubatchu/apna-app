@@ -39,15 +39,14 @@ const nip98Config: Nip98Config = {
     // Pubkeys authorized to send push notifications
     pushSend: [
       // Example: "7575b94fa81152fe529a4899d390294af142277154ce44036d50e2ad99d5c267"
-      "7575b94fa81152fe529a4899d390294af142277154ce44036d50e2ad99d5c267"
+      "7575b94fa81152fe529a4899d390294af142277154ce44036d50e2ad99d5c267",
     ],
     
     // Pubkeys authorized to send test push notifications
     pushTest: [
       // Example: "7575b94fa81152fe529a4899d390294af142277154ce44036d50e2ad99d5c267"
       "7575b94fa81152fe529a4899d390294af142277154ce44036d50e2ad99d5c267",
-      "5e2e22a10c0dcd96bd60d462028917d9f64f8eef22417fbd783243a5ccddf545"
-    ]
+    ],
   }
 };
 
