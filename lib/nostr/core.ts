@@ -130,3 +130,5 @@ export const subscribeToEvents = async (filter: Filter, callback: (e: NostrEvent
     // Return cleanup function that closes the subscription
     return () => sub.close();
 }
+
+export { DEFAULT_RELAYS } from "@/lib/constants";
