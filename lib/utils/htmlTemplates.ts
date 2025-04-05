@@ -2,7 +2,11 @@ import { ChatMessage } from "@/lib/generatedAppsDB";
 
 const interfaceUrl = "https://cdn.jsdelivr.net/npm/@apna/sdk/src/interfaces/nostr/index.ts"
 let tsContent: string;
-fetch(interfaceUrl).then(async r => {tsContent = await r.text(); console.log(tsContent)})
+fetch(interfaceUrl).then(async r => { 
+  tsContent = await r.text(); 
+  // console.log(tsContent); 
+  console.log("fetched nostr interface successfully");
+})
 
 // HTML template that will be used as the base for all generated apps
 export const BASE_HTML_TEMPLATE = `

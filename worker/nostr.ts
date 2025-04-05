@@ -1,14 +1,6 @@
 // @ts-nocheck
 importScripts("https://unpkg.com/nostr-tools@2.11.0/lib/nostr.bundle.js")
 
-const DEFAULT_RELAYS = [
-    "wss://eden.nostr.land/",
-    "wss://nostr.wine/",
-    "wss://relay.damus.io/",
-    "wss://relay.nostr.band/",
-    "wss://relay.snort.social"
-]
-
 const filterTagValues = (tags: any[], tagName: string): string[] => {
     if (!tags) return [];
     return tags

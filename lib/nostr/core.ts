@@ -1,13 +1,6 @@
 import { Event as NostrEvent, Filter } from 'nostr-tools'
 import { SimplePool } from 'nostr-tools/pool'
-
-export const DEFAULT_RELAYS = [
-    "wss://eden.nostr.land/",
-    "wss://nostr.wine/",
-    "wss://relay.damus.io/",
-    "wss://relay.nostr.band/",
-    "wss://relay.snort.social"
-]
+import { DEFAULT_RELAYS } from "@/lib/constants";
 
 export const pool = new SimplePool()
 
