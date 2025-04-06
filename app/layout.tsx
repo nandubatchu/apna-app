@@ -9,8 +9,8 @@ import Script from 'next/script'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'Apna Apps',
-  description: 'Your favorite mini apps in one place',
+  title: 'Apna',
+  description: 'Reference host for Apna apps!',
 }
 
 export const viewport = {
