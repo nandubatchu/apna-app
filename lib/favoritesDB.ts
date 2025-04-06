@@ -111,4 +111,8 @@ class FavoritesDB {
 }
 
 export const favoritesDB = new FavoritesDB();
+if (typeof window !== 'undefined') {
+  // @ts-ignore
+  window.favoritesDB = favoritesDB;
+}
 export type { FavoriteApp };
