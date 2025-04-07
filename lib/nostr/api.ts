@@ -1,6 +1,6 @@
 import { Event as NostrEvent, Filter, getPublicKey } from 'nostr-tools'
 import * as nip19 from 'nostr-tools/nip19'
-import { fetchAllFromAPI, subscribeToEvents, filterTagValues, DEFAULT_RELAYS, pool } from './core'
+import { fetchAllFromAPI, subscribeToEvents, filterTagValues, DEFAULT_RELAYS, pool, fetchAllFromRelay, fetchFromRelay } from './core'
 import { normalizeNoteId, normalizePublicKey } from './utils'
 import { publishKind0, publishKind1, publishKind3, publishKind6, publishKind7, GenerateKeyPair } from './events'
 import * as crypto from 'crypto'
@@ -38,10 +38,14 @@ export const FollowNpub = async (npub: string, nsecOrNpub: string) => {
         authorPubkey = getPublicKey(nip19.decode(nsecOrNpub).data as Uint8Array);
     }
     
-    const existingContacts = await fetchAllFromAPI({
+    // const existingContacts = await fetchAllFromAPI({
+    //     kinds: [3],
+    //     authors: [authorPubkey]
+    // }, undefined, undefined, true)
+    const existingContacts = await fetchFromRelay({
         kinds: [3],
         authors: [authorPubkey]
-    }, undefined, undefined, true)
+    })
     
     let newTags = []
     if (existingContacts) {
@@ -65,10 +69,14 @@ export const UnfollowNpub = async (npub: string, nsecOrNpub: string) => {
         authorPubkey = getPublicKey(nip19.decode(nsecOrNpub).data as Uint8Array);
     }
     
-    const existingContacts = await fetchAllFromAPI({
+    // const existingContacts = await fetchAllFromAPI({
+    //     kinds: [3],
+    //     authors: [authorPubkey]
+    // }, undefined, undefined, true)
+    const existingContacts = await fetchFromRelay({
         kinds: [3],
         authors: [authorPubkey]
-    }, undefined, undefined, true)
+    })
     
     if (!existingContacts) {
         return
@@ -94,9 +102,12 @@ export const PublishNote = async (content: any, nsecOrNpub: string) => {
 
 export const RepostNote = async (noteId: string, quoteContent: string, nsecOrNpub: string) => {
     const noteIdRaw = normalizeNoteId(noteId)
-    const note: any = await fetchAllFromAPI({
+    // const note: any = await fetchAllFromAPI({
+    //     ids: [noteIdRaw]
+    // }, undefined, undefined, true)
+    const note: any = await fetchFromRelay({
         ids: [noteIdRaw]
-    }, undefined, undefined, true)
+    })
     
     if (!note) {
         throw new Error(`Note with ID ${noteId} not found`);
@@ -132,9 +143,12 @@ export const ReactToNote = async (noteId: string, nsecOrNpub: string, content: s
     }
     
     const noteIdRaw = normalizeNoteId(noteId)
-    const note: any = await fetchAllFromAPI({
+    // const note: any = await fetchAllFromAPI({
+    //     ids: [noteIdRaw]
+    // }, undefined, undefined, true)
+    const note: any = await fetchFromRelay({
         ids: [noteIdRaw]
-    }, undefined, undefined, true)
+    })
     
     if (!note) {
         throw new Error(`Note with ID ${noteId} not found`);
@@ -154,9 +168,12 @@ export const ReplyToNote = async (noteId: string, content: string, nsecOrNpub: s
     }
     
     const noteIdRaw = normalizeNoteId(noteId)
-    const note: any = await fetchAllFromAPI({
+    // const note: any = await fetchAllFromAPI({
+    //     ids: [noteIdRaw]
+    // }, undefined, undefined, true)
+    const note: any = await fetchFromRelay({
         ids: [noteIdRaw]
-    }, undefined, undefined, true)
+    })
     
     if (!note) {
         throw new Error(`Note with ID ${noteId} not found`);
@@ -205,10 +222,14 @@ export const SubscribeToFeed = async (npub: string, feedType: string, callback: 
     
     switch (feedType) {
         case "FOLLOWING_FEED": {
-            const existingContacts = await fetchAllFromAPI({
+            // const existingContacts = await fetchAllFromAPI({
+            //     kinds: [3],
+            //     authors: [pubkey]
+            // }, undefined, undefined, true)
+            const existingContacts = await fetchFromRelay({
                 kinds: [3],
                 authors: [pubkey]
-            }, undefined, undefined, true)
+            })
             console.log(existingContacts)
             if (!existingContacts) {
                 return
@@ -242,10 +263,14 @@ export const SubscribeToNotifications = async (callback: (note: NostrEvent) => v
 
 export const GetNoteReplies = async (noteId: string, direct: boolean = false) => {
     const noteIdRaw = normalizeNoteId(noteId)
-    const replies = await fetchAllFromAPI({
+    // const replies = await fetchAllFromAPI({
+    //     kinds: [1],
+    //     "#e": [noteIdRaw]
+    // }, false, [noteIdRaw], false, 60, true);
+    const replies = await fetchAllFromRelay({
         kinds: [1],
         "#e": [noteIdRaw]
-    }, false, [noteIdRaw], false, 60, true);
+    });
 
     if (direct) {
         // Filter for direct replies only - where the last "e" tag marked "reply" matches the note ID
@@ -264,15 +289,20 @@ export const GetNoteZaps = async (noteId: string) => {
         kinds: [9735],
         "#e": [noteIdRaw]
     }
-    return (await fetchAllFromAPI(filter)) as (NostrEvent & {kind:9735})[]
+    // return (await fetchAllFromAPI(filter)) as (NostrEvent & {kind:9735})[]
+    return (await fetchAllFromRelay(filter)) as (NostrEvent & {kind:9735})[]
 }
 
 const getNprofile = async (npub: string) => {
     const pubkey = normalizePublicKey(npub)
-    const config = await fetchAllFromAPI({
+    // const config = await fetchAllFromAPI({
+    //     kinds: [3],
+    //     authors: [pubkey]
+    // }, undefined, undefined, true)
+    const config = await fetchFromRelay({
         kinds: [3],
         authors: [pubkey]
-    }, undefined, undefined, true)
+    })
    
     let relays = DEFAULT_RELAYS
     if (config) {
@@ -284,26 +314,37 @@ const getNprofile = async (npub: string) => {
 
 export const GetNpubProfileMetadata = async (npub: string) => {
     const pubkey = normalizePublicKey(npub)
-    const metadataContent = await fetchAllFromAPI({
+    // const metadataContent = await fetchAllFromAPI({
+    //     kinds: [0],
+    //     authors: [pubkey]
+    // }, false, [pubkey], true, 60, true)
+    const metadataContent = await fetchFromRelay({
         kinds: [0],
         authors: [pubkey]
-    }, false, [pubkey], true, 60, true)
-    return JSON.parse(metadataContent.content || {})
+    })
+    return JSON.parse(metadataContent?.content || "{}")
 }
 
 export const GetNote = async (noteId: string) => {
     const noteIdRaw = normalizeNoteId(noteId)
-    return (await fetchAllFromAPI({
+    // return (await fetchAllFromAPI({
+    //     ids: [noteIdRaw]
+    // }, undefined, undefined, true, undefined, true)) as NostrEvent & {kind: 1}
+    return (await fetchFromRelay({
         ids: [noteIdRaw]
-    }, undefined, undefined, true, undefined, true)) as NostrEvent & {kind: 1}
+    })) as NostrEvent & {kind: 1}
 }
 
 const getFollowing = async (npub: string): Promise<string[]> => {
     const pubkey = normalizePublicKey(npub)
-    const following = await fetchAllFromAPI({
+    // const following = await fetchAllFromAPI({
+    //     kinds: [3],
+    //     authors: [pubkey]
+    // }, undefined, undefined, true)
+    const following = await fetchFromRelay({
         kinds: [3],
         authors: [pubkey]
-    }, undefined, undefined, true)
+    })
     return following ? filterTagValues(following.tags, "p") : []
 }   
 
@@ -313,7 +354,8 @@ const getFollowers = async (npub: string): Promise<string[]> => {
         kinds: [3],
         "#p": [pubkey]
     }
-    const followers = await fetchAllFromAPI(filter, false, [pubkey])
+    // const followers = await fetchAllFromAPI(filter, false, [pubkey])
+    const followers = await fetchAllFromRelay(filter)
     return followers.map((e: any) => e.pubkey)
 }
 
@@ -340,7 +382,8 @@ export const GetNoteReactions = async (noteId: string, revalidate: boolean=false
         "#e": [noteIdRaw],
     }
     if (since) filter.since = since;
-    return fetchAllFromAPI(filter, revalidate, [noteIdRaw], false, 60, true)
+    // return fetchAllFromAPI(filter, revalidate, [noteIdRaw], false, 60, true)
+    return fetchAllFromRelay(filter)
 }
 
 export const GetNoteReposts = async (noteId: string, revalidate: boolean=false, since?: number) => {
@@ -350,7 +393,8 @@ export const GetNoteReposts = async (noteId: string, revalidate: boolean=false, 
         "#e": [noteIdRaw],
     }
     if (since) filter.since = since;
-    return fetchAllFromAPI(filter, revalidate, [noteIdRaw], false, 60, true)
+    // return fetchAllFromAPI(filter, revalidate, [noteIdRaw], false, 60, true)
+    return fetchAllFromRelay(filter)
 }
 
 export const GetFeed = async (npub: string, feedType: string, since?: number, until?: number, limit?: number) => {
@@ -364,25 +408,37 @@ export const GetFeed = async (npub: string, feedType: string, since?: number, un
 
     switch (feedType) {
         case "FOLLOWING_FEED": {
-            const existingContacts = await fetchAllFromAPI({
+            // const existingContacts = await fetchAllFromAPI({
+            //     kinds: [3],
+            //     authors: [authorRaw]
+            // }, undefined, undefined, true)
+            const existingContacts = await fetchFromRelay({
                 kinds: [3],
                 authors: [authorRaw]
-            }, undefined, undefined, true)
+            })
             if (!existingContacts) {                
                 return []
             }
             const followingAuthors = filterTagValues(existingContacts.tags, "p")
-            return fetchAllFromAPI({
+            // return fetchAllFromAPI({
+            //     ...baseFilter,
+            //     authors: followingAuthors
+            // }, true);
+            return fetchAllFromRelay({
                 ...baseFilter,
                 authors: followingAuthors
-            }, true);
+            });
         }
             
         case "NOTES_FEED":
-            return fetchAllFromAPI({
+            // return fetchAllFromAPI({
+            //     ...baseFilter,
+            //     authors: [authorRaw]
+            // }, true);
+            return fetchAllFromRelay({
                 ...baseFilter,
                 authors: [authorRaw]
-            }, true);
+            });
             
         default:
             return [];

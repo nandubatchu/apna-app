@@ -118,7 +118,8 @@ export const fetchEvent = async (eventFilter: any, relaysOverride?: string[]): P
     });
   }
   
-  const event = await fetchAllFromAPI(filter, true, undefined, true);
+  // const event = await fetchAllFromAPI(filter, true, undefined, true);
+  const event = await fetchFromRelay(filter)
   if (!event) {
     throw new Error('No event found matching the filter');
   }
@@ -159,7 +160,8 @@ export const fetchEvents = async (eventFilter: any, relaysOverride?: string[]): 
     });
   }
   
-  const events = await fetchAllFromAPI(filter, true);
+  // const events = await fetchAllFromAPI(filter, true);
+  const events = await fetchAllFromRelay(filter);
   return events as IEvent[];
 };
 
