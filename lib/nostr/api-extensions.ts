@@ -1,6 +1,6 @@
 import * as nip19 from 'nostr-tools/nip19'
 import { Event as NostrEvent, Filter } from 'nostr-tools'
-import { fetchFromRelay, fetchAllFromRelay, subscribeToEvents as subscribeToEventsCore, fetchAllFromAPI } from './core'
+import { fetchFromRelay, fetchAllFromRelay, subscribeToEvents as subscribeToEventsCore, fetchAllFromAPI, fetchEventsFromRelays, DEFAULT_RELAYS } from './core'
 import { publishEvent } from './events'
 import { normalizePublicKey, normalizeNoteId } from './utils'
 import { IUnsignedEvent, IEvent } from '@apna/sdk'
@@ -119,7 +119,7 @@ export const fetchEvent = async (eventFilter: any, relaysOverride?: string[]): P
   }
   
   // const event = await fetchAllFromAPI(filter, true, undefined, true);
-  const event = await fetchFromRelay(filter)
+  const event = await fetchEventsFromRelays(DEFAULT_RELAYS, filter, true)
   if (!event) {
     throw new Error('No event found matching the filter');
   }
@@ -161,7 +161,7 @@ export const fetchEvents = async (eventFilter: any, relaysOverride?: string[]): 
   }
   
   // const events = await fetchAllFromAPI(filter, true);
-  const events = await fetchAllFromRelay(filter);
+  const events = await fetchEventsFromRelays(DEFAULT_RELAYS, filter)
   return events as IEvent[];
 };
 

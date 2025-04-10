@@ -43,6 +43,112 @@ import { PUBLIC_BASE_URL } from '@/lib/constants';
 
 const promiseCache = new Map();
 
+// --- Extensible n-tier concurrency queue ---
+type TierConfig = {
+    maxConcurrentFetches: number;
+    queuePromotionTimeout: number; // ms
+};
+
+// Example default tiers: fast, medium, slow
+export let tiers: TierConfig[] = [
+    { maxConcurrentFetches: 10, queuePromotionTimeout: 2000 },
+    { maxConcurrentFetches: 5, queuePromotionTimeout: 5000 },
+    { maxConcurrentFetches: 2, queuePromotionTimeout: 10000 },
+    { maxConcurrentFetches: 2, queuePromotionTimeout: 15000 },
+];
+
+const activeCounts: number[] = new Array(tiers.length).fill(0);
+
+const fetchQueue: Array<{ resolve: () => void; enqueuedAt: number }> = [];
+
+/**
+ * Set the tier configurations.
+ * @param newTiers Array of tier configs
+ */
+export function setFetchTiers(newTiers: TierConfig[]) {
+    tiers = newTiers;
+    activeCounts.length = newTiers.length;
+    for (let i = 0; i < newTiers.length; i++) {
+        activeCounts[i] = 0;
+    }
+}
+
+/**
+ * Enqueue a fetch operation respecting multi-tier concurrency limits.
+ */
+async function enqueueFetch<T>(fn: () => Promise<T>): Promise<T> {
+    let tierIndex = 0;
+    const tierTimeoutHandles: Array<NodeJS.Timeout | null> = new Array(tiers.length).fill(null);
+    let released = false;
+
+    const releaseSlot = () => {
+        if (!released) {
+            released = true;
+            activeCounts[tierIndex]--;
+            console.log(`[enqueueFetch] Slot released from tier ${tierIndex}. Active in tier: ${activeCounts[tierIndex]}`);
+            if (fetchQueue.length > 0) {
+                console.log(`[enqueueFetch] Triggering next queued request. Queue length before dequeue: ${fetchQueue.length}`);
+                const nextItem = fetchQueue.shift();
+                if (nextItem) {
+                    const delay = Date.now() - nextItem.enqueuedAt;
+                    console.log(`[enqueueFetch] Dequeued and starting request after waiting ${delay} ms. Queue length after dequeue: ${fetchQueue.length}`);
+                    nextItem.resolve();
+                }
+            }
+        }
+    };
+
+    const tryPromote = () => {
+        if (released) return;
+        const nextTier = tierIndex + 1;
+        if (nextTier >= tiers.length) {
+            console.log(`[enqueueFetch] Fetch running >${tiers[tierIndex].queuePromotionTimeout}ms, but no higher tier exists.`);
+            return;
+        }
+        if (activeCounts[nextTier] < tiers[nextTier].maxConcurrentFetches) {
+            activeCounts[tierIndex]--;
+            activeCounts[nextTier]++;
+            console.log(`[enqueueFetch] Promoting fetch from tier ${tierIndex} to tier ${nextTier}.`);
+            tierIndex = nextTier;
+        } else {
+            console.log(`[enqueueFetch] Promotion to tier ${nextTier} blocked, max concurrency reached (${tiers[nextTier].maxConcurrentFetches}).`);
+        }
+    };
+
+    // Wait for a free slot in tier 0
+    while (activeCounts[0] >= tiers[0].maxConcurrentFetches) {
+        console.log(`[enqueueFetch] Tier 0 full (${tiers[0].maxConcurrentFetches}). Queuing request. Queue length before enqueue: ${fetchQueue.length}`);
+        const enqueuedAt = Date.now();
+        await new Promise<void>(resolve => fetchQueue.push({ resolve, enqueuedAt }));
+        const delay = Date.now() - enqueuedAt;
+        console.log(`[enqueueFetch] Dequeued and starting request after waiting ${delay} ms. Queue length after dequeue: ${fetchQueue.length}`);
+    }
+    activeCounts[0]++;
+    console.log(`[enqueueFetch] Starting request in tier 0. Active count: ${activeCounts[0]}`);
+
+    // Set up promotion timers for each tier
+    for (let i = 0; i < tiers.length - 1; i++) {
+        tierTimeoutHandles[i] = setTimeout(() => {
+            tryPromote();
+        }, tiers[i].queuePromotionTimeout);
+    }
+
+    try {
+        const result = await fn();
+        for (const handle of tierTimeoutHandles) {
+            if (handle) clearTimeout(handle);
+        }
+        releaseSlot();
+        return result;
+    } catch (error) {
+        for (const handle of tierTimeoutHandles) {
+            if (handle) clearTimeout(handle);
+        }
+        releaseSlot();
+        throw error;
+    }
+}
+
 // Simple hash function
 const hashCode = (str: string): string => {
     let hash = 0;
@@ -130,5 +236,66 @@ export const subscribeToEvents = async (filter: Filter, callback: (e: NostrEvent
     // Return cleanup function that closes the subscription
     return () => sub.close();
 }
+
+/**
+ * Fetch events from a list of relays with caching.
+ * @param relays List of relay URLs
+ * @param filter Nostr filter
+ * @param singleEvent If true, fetch a single event (default: false)
+ * @returns Promise resolving to a single event or array of events
+ */
+export function fetchEventsFromRelays(
+    relays: string[],
+    filter: Filter,
+    singleEvent: true
+): Promise<NostrEvent | null>;
+
+export function fetchEventsFromRelays(
+    relays: string[],
+    filter: Filter,
+    singleEvent?: false
+): Promise<NostrEvent[]>;
+
+export async function fetchEventsFromRelays(
+    relays: string[],
+    filter: Filter,
+    singleEvent: boolean = false
+): Promise<NostrEvent | NostrEvent[] | null> {
+    const keyObj = {
+        relays,
+        filter,
+        singleEvent
+    };
+    const cacheKey = hashCode(JSON.stringify(keyObj));
+
+    if (promiseCache.has(cacheKey)) {
+        console.log('## returning cached promise for fetchEventsFromRelays', keyObj);
+        return promiseCache.get(cacheKey);
+    }
+
+    const promise = enqueueFetch(async () => {
+        try {
+            if (singleEvent) {
+                const event = await pool.get(relays, filter);
+                return event ?? null;
+            } else {
+                const events = await pool.querySync(relays, filter, { maxWait: 10000 });
+                return events;
+            }
+        } catch (error) {
+            console.error('Error in fetchEventsFromRelays:', error);
+            return singleEvent ? null : [];
+        }
+    });
+
+    promiseCache.set(cacheKey, promise);
+
+    setTimeout(() => {
+        promiseCache.delete(cacheKey);
+        console.log('## removed cached promise for fetchEventsFromRelays', keyObj);
+    }, 10000);
+
+    return promise;
+};
 
 export { DEFAULT_RELAYS } from "@/lib/constants";

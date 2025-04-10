@@ -1,6 +1,6 @@
 import { Event as NostrEvent, Filter, getPublicKey } from 'nostr-tools'
 import * as nip19 from 'nostr-tools/nip19'
-import { fetchAllFromAPI, subscribeToEvents, filterTagValues, DEFAULT_RELAYS, pool, fetchAllFromRelay, fetchFromRelay } from './core'
+import { subscribeToEvents, filterTagValues, DEFAULT_RELAYS, pool, fetchEventsFromRelays } from './core'
 import { normalizeNoteId, normalizePublicKey } from './utils'
 import { publishKind0, publishKind1, publishKind3, publishKind6, publishKind7, GenerateKeyPair } from './events'
 import * as crypto from 'crypto'
@@ -42,10 +42,10 @@ export const FollowNpub = async (npub: string, nsecOrNpub: string) => {
     //     kinds: [3],
     //     authors: [authorPubkey]
     // }, undefined, undefined, true)
-    const existingContacts = await fetchFromRelay({
+    const existingContacts = await fetchEventsFromRelays(DEFAULT_RELAYS, {
         kinds: [3],
         authors: [authorPubkey]
-    })
+    }, true)
     
     let newTags = []
     if (existingContacts) {
@@ -73,10 +73,10 @@ export const UnfollowNpub = async (npub: string, nsecOrNpub: string) => {
     //     kinds: [3],
     //     authors: [authorPubkey]
     // }, undefined, undefined, true)
-    const existingContacts = await fetchFromRelay({
+    const existingContacts = await fetchEventsFromRelays(DEFAULT_RELAYS,{
         kinds: [3],
         authors: [authorPubkey]
-    })
+    }, true)
     
     if (!existingContacts) {
         return
@@ -105,9 +105,9 @@ export const RepostNote = async (noteId: string, quoteContent: string, nsecOrNpu
     // const note: any = await fetchAllFromAPI({
     //     ids: [noteIdRaw]
     // }, undefined, undefined, true)
-    const note: any = await fetchFromRelay({
+    const note = await fetchEventsFromRelays(DEFAULT_RELAYS,{
         ids: [noteIdRaw]
-    })
+    }, true)
     
     if (!note) {
         throw new Error(`Note with ID ${noteId} not found`);
@@ -146,9 +146,9 @@ export const ReactToNote = async (noteId: string, nsecOrNpub: string, content: s
     // const note: any = await fetchAllFromAPI({
     //     ids: [noteIdRaw]
     // }, undefined, undefined, true)
-    const note: any = await fetchFromRelay({
+    const note = await fetchEventsFromRelays(DEFAULT_RELAYS, {
         ids: [noteIdRaw]
-    })
+    }, true)
     
     if (!note) {
         throw new Error(`Note with ID ${noteId} not found`);
@@ -171,9 +171,9 @@ export const ReplyToNote = async (noteId: string, content: string, nsecOrNpub: s
     // const note: any = await fetchAllFromAPI({
     //     ids: [noteIdRaw]
     // }, undefined, undefined, true)
-    const note: any = await fetchFromRelay({
+    const note = await fetchEventsFromRelays(DEFAULT_RELAYS, {
         ids: [noteIdRaw]
-    })
+    }, true)
     
     if (!note) {
         throw new Error(`Note with ID ${noteId} not found`);
@@ -226,10 +226,10 @@ export const SubscribeToFeed = async (npub: string, feedType: string, callback: 
             //     kinds: [3],
             //     authors: [pubkey]
             // }, undefined, undefined, true)
-            const existingContacts = await fetchFromRelay({
+            const existingContacts = await fetchEventsFromRelays(DEFAULT_RELAYS,{
                 kinds: [3],
                 authors: [pubkey]
-            })
+            }, true)
             console.log(existingContacts)
             if (!existingContacts) {
                 return
@@ -267,7 +267,7 @@ export const GetNoteReplies = async (noteId: string, direct: boolean = false) =>
     //     kinds: [1],
     //     "#e": [noteIdRaw]
     // }, false, [noteIdRaw], false, 60, true);
-    const replies = await fetchAllFromRelay({
+    const replies = await fetchEventsFromRelays(DEFAULT_RELAYS, {
         kinds: [1],
         "#e": [noteIdRaw]
     });
@@ -290,7 +290,7 @@ export const GetNoteZaps = async (noteId: string) => {
         "#e": [noteIdRaw]
     }
     // return (await fetchAllFromAPI(filter)) as (NostrEvent & {kind:9735})[]
-    return (await fetchAllFromRelay(filter)) as (NostrEvent & {kind:9735})[]
+    return (await fetchEventsFromRelays(DEFAULT_RELAYS, filter)) as (NostrEvent & {kind:9735})[]
 }
 
 const getNprofile = async (npub: string) => {
@@ -299,10 +299,10 @@ const getNprofile = async (npub: string) => {
     //     kinds: [3],
     //     authors: [pubkey]
     // }, undefined, undefined, true)
-    const config = await fetchFromRelay({
+    const config = await fetchEventsFromRelays(DEFAULT_RELAYS, {
         kinds: [3],
         authors: [pubkey]
-    })
+    }, true)
    
     let relays = DEFAULT_RELAYS
     if (config) {
@@ -318,10 +318,10 @@ export const GetNpubProfileMetadata = async (npub: string) => {
     //     kinds: [0],
     //     authors: [pubkey]
     // }, false, [pubkey], true, 60, true)
-    const metadataContent = await fetchFromRelay({
+    const metadataContent = await fetchEventsFromRelays(DEFAULT_RELAYS, {
         kinds: [0],
         authors: [pubkey]
-    })
+    }, true)
     return JSON.parse(metadataContent?.content || "{}")
 }
 
@@ -330,9 +330,9 @@ export const GetNote = async (noteId: string) => {
     // return (await fetchAllFromAPI({
     //     ids: [noteIdRaw]
     // }, undefined, undefined, true, undefined, true)) as NostrEvent & {kind: 1}
-    return (await fetchFromRelay({
+    return (await fetchEventsFromRelays(DEFAULT_RELAYS, {
         ids: [noteIdRaw]
-    })) as NostrEvent & {kind: 1}
+    }, true)) as NostrEvent & {kind: 1}
 }
 
 const getFollowing = async (npub: string): Promise<string[]> => {
@@ -341,10 +341,10 @@ const getFollowing = async (npub: string): Promise<string[]> => {
     //     kinds: [3],
     //     authors: [pubkey]
     // }, undefined, undefined, true)
-    const following = await fetchFromRelay({
+    const following = await fetchEventsFromRelays(DEFAULT_RELAYS, {
         kinds: [3],
         authors: [pubkey]
-    })
+    }, true)
     return following ? filterTagValues(following.tags, "p") : []
 }   
 
@@ -355,7 +355,7 @@ const getFollowers = async (npub: string): Promise<string[]> => {
         "#p": [pubkey]
     }
     // const followers = await fetchAllFromAPI(filter, false, [pubkey])
-    const followers = await fetchAllFromRelay(filter)
+    const followers = await fetchEventsFromRelays(DEFAULT_RELAYS, filter)
     return followers.map((e: any) => e.pubkey)
 }
 
@@ -383,7 +383,7 @@ export const GetNoteReactions = async (noteId: string, revalidate: boolean=false
     }
     if (since) filter.since = since;
     // return fetchAllFromAPI(filter, revalidate, [noteIdRaw], false, 60, true)
-    return fetchAllFromRelay(filter)
+    return fetchEventsFromRelays(DEFAULT_RELAYS, filter)
 }
 
 export const GetNoteReposts = async (noteId: string, revalidate: boolean=false, since?: number) => {
@@ -394,7 +394,7 @@ export const GetNoteReposts = async (noteId: string, revalidate: boolean=false, 
     }
     if (since) filter.since = since;
     // return fetchAllFromAPI(filter, revalidate, [noteIdRaw], false, 60, true)
-    return fetchAllFromRelay(filter)
+    return fetchEventsFromRelays(DEFAULT_RELAYS, filter)
 }
 
 export const GetFeed = async (npub: string, feedType: string, since?: number, until?: number, limit?: number) => {
@@ -412,10 +412,10 @@ export const GetFeed = async (npub: string, feedType: string, since?: number, un
             //     kinds: [3],
             //     authors: [authorRaw]
             // }, undefined, undefined, true)
-            const existingContacts = await fetchFromRelay({
+            const existingContacts = await fetchEventsFromRelays(DEFAULT_RELAYS, {
                 kinds: [3],
                 authors: [authorRaw]
-            })
+            }, true)
             if (!existingContacts) {                
                 return []
             }
@@ -424,7 +424,7 @@ export const GetFeed = async (npub: string, feedType: string, since?: number, un
             //     ...baseFilter,
             //     authors: followingAuthors
             // }, true);
-            return fetchAllFromRelay({
+            return fetchEventsFromRelays(DEFAULT_RELAYS,{
                 ...baseFilter,
                 authors: followingAuthors
             });
@@ -435,7 +435,7 @@ export const GetFeed = async (npub: string, feedType: string, since?: number, un
             //     ...baseFilter,
             //     authors: [authorRaw]
             // }, true);
-            return fetchAllFromRelay({
+            return fetchEventsFromRelays(DEFAULT_RELAYS, {
                 ...baseFilter,
                 authors: [authorRaw]
             });
