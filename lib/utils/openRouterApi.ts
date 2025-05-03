@@ -116,6 +116,9 @@ export async function callOpenRouterApi({
         // max_tokens: 4000,
         provider: {
           sort: 'throughput'
+        },
+        reasoning: {
+          effort: "high"
         }
       }),
     });
